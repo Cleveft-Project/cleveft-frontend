@@ -1,71 +1,102 @@
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { WelcomeLogo } from '@/components/welcome-logo';
-import { Spacing } from '@/constants/theme';
-import { LinearGradient } from 'expo-linear-gradient';
-import { useRouter } from 'expo-router';
-import { Pressable, SafeAreaView, StyleSheet, TextInput, View } from 'react-native';
+import { IMAGES } from "@/constants/image";
+import { LinearGradient } from "expo-linear-gradient";
+import { useRouter } from "expo-router";
+import { useState } from "react";
+import {
+    Image,
+    Pressable,
+    SafeAreaView,
+    StyleSheet,
+    Text,
+    TextInput,
+    View,
+} from "react-native";
 
 export default function LoginScreen() {
   const router = useRouter();
 
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+
   return (
-    <ThemedView style={styles.container}>
-      <LinearGradient
-        colors={['#111E82', '#07143D']}
-        start={[0.1, 0]}
-        end={[0.9, 1]}
-        style={styles.gradient}
-      >
-        <SafeAreaView style={styles.safeArea}>
-          <View style={styles.backgroundShapeTop} />
-          <View style={styles.backgroundShapeBottom} />
+    <LinearGradient
+      colors={["#1438C9", "#081A63", "#020A28"]}
+      style={styles.container}
+    >
+      <SafeAreaView style={styles.safeArea}>
 
-          <Pressable style={styles.backButton} onPress={() => router.back()}>
-            <ThemedText style={styles.backButtonText}>{'<'} </ThemedText>
-          </Pressable>
+        <Pressable onPress={() => router.back()}>
+          <Image source={IMAGES.back} style={styles.backIcon} />
+        </Pressable>
 
-          <View style={styles.logoContainer}>
-            <WelcomeLogo size={96} />
-          </View>
+        <View style={styles.header}>
+          <Text style={styles.title}>Welcome Back</Text>
+          <Text style={styles.subtitle}>
+            Sign in to continue learning
+          </Text>
+        </View>
 
-          <View style={styles.header}>
-            <ThemedText type="title" style={styles.title}>
-              Welcome Back!
-            </ThemedText>
-            <ThemedText type="smallBold" style={styles.subtitle}>
-              Enter Your Username & Password
-            </ThemedText>
-          </View>
+        <View style={styles.form}>
 
-          <View style={styles.formCard}>
-            <TextInput placeholder="Username" placeholderTextColor="#9FAAE4" style={styles.input} />
+          <View style={styles.inputContainer}>
+            <Image source={IMAGES.profile} style={styles.inputIcon} />
             <TextInput
-              placeholder="Password"
-              placeholderTextColor="#9FAAE4"
-              secureTextEntry
+              placeholder="Email Address"
+              placeholderTextColor="#AFC4FF"
+              value={email}
+              onChangeText={setEmail}
               style={styles.input}
             />
-            <Pressable style={styles.primaryButton} onPress={() => router.push('/welcome')}>
-              <ThemedText style={styles.primaryButtonText}>LOGIN</ThemedText>
-            </Pressable>
           </View>
 
-          <View style={styles.linkRow}>
-            <Pressable onPress={() => router.push('/forgot-password')}>
-              <ThemedText type="smallBold" style={styles.linkText}>
-                Forgotten Password?
-              </ThemedText>
-            </Pressable>
-            <Pressable onPress={() => router.push('/sign-up')}>
-              <ThemedText type="smallBold" style={styles.linkText}>
-                Create a New Account
-              </ThemedText>
-            </Pressable>
+          <View style={styles.inputContainer}>
+            <Image source={IMAGES.profile} style={styles.inputIcon} />
+            <TextInput
+              placeholder="Password"
+              placeholderTextColor="#AFC4FF"
+              secureTextEntry
+              value={password}
+              onChangeText={setPassword}
+              style={styles.input}
+            />
           </View>
-        </SafeAreaView>
-      </LinearGradient>
-    </ThemedView>
+
+          <Pressable onPress={() => router.push("/forgot-password")}>
+            <Text style={styles.forgot}>Forgot Password?</Text>
+          </Pressable>
+
+          <Pressable onPress={() => router.replace("/home")}>
+  <LinearGradient
+    colors={["#4B84FF", "#2960FF"]}
+    style={styles.loginButton}
+  >
+    <Text style={styles.loginText}>LOGIN</Text>
+  </LinearGradient>
+</Pressable>
+
+          <Text style={styles.or}>OR CONTINUE WITH</Text>
+
+          <Pressable style={styles.googleButton}>
+            <Image source={IMAGES.google} style={styles.googleIcon} />
+            <Text style={styles.googleText}>Google</Text>
+          </Pressable>
+
+        </View>
+
+        <View style={styles.bottom}>
+          <Text style={styles.bottomText}>
+            Don't have an account?
+          </Text>
+
+          <Pressable onPress={() => router.push("/sign-up")}>
+            <Text style={styles.signup}>
+              Sign Up
+            </Text>
+          </Pressable>
+        </View>
+
+      </SafeAreaView>
+    </LinearGradient>
   );
 }
 
@@ -73,105 +104,124 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  gradient: {
-    flex: 1,
-  },
+
   safeArea: {
     flex: 1,
-    paddingHorizontal: Spacing.four,
-    justifyContent: 'space-between',
-    paddingVertical: Spacing.four,
+    padding: 25,
+    justifyContent: "space-between",
   },
-  backgroundShapeTop: {
-    position: 'absolute',
-    top: -120,
-    left: -80,
-    width: 240,
-    height: 240,
-    borderRadius: 180,
-    backgroundColor: 'rgba(161, 123, 255, 0.22)',
+
+  backIcon: {
+    width: 24,
+    height: 24,
+    tintColor: "white",
+    resizeMode: "contain",
   },
-  backgroundShapeBottom: {
-    position: 'absolute',
-    bottom: -130,
-    right: -100,
-    width: 320,
-    height: 320,
-    borderRadius: 180,
-    backgroundColor: 'rgba(72, 108, 255, 0.24)',
-  },
-  backButton: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: 'rgba(255,255,255,0.08)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: Spacing.four,
-  },
-  backButtonText: {
-    color: '#FFFFFF',
-    fontSize: 24,
-    fontWeight: '700',
-  },
-  logoContainer: {
-    alignItems: 'center',
-    marginTop: Spacing.two,
-    marginBottom: Spacing.four,
-  },
+
   header: {
-    marginBottom: Spacing.four,
+    marginTop: 10,
   },
+
   title: {
-    color: '#FFFFFF',
-    fontSize: 40,
-    textAlign: 'center',
-    marginBottom: Spacing.one,
+    color: "white",
+    fontSize: 34,
+    fontWeight: "800",
   },
+
   subtitle: {
-    color: '#B6C3FF',
-    textAlign: 'center',
-    fontStyle: 'italic',
+    color: "#C9D8FF",
+    marginTop: 6,
+    fontSize: 16,
   },
-  formCard: {
-    width: '100%',
-    padding: Spacing.four,
-    borderRadius: 40,
-    backgroundColor: 'rgba(255,255,255,0.08)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.12)',
+
+  form: {
+    gap: 18,
   },
+
+  inputContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(255,255,255,0.08)",
+    borderRadius: 18,
+    paddingHorizontal: 18,
+    height: 60,
+  },
+
+  inputIcon: {
+    width: 22,
+    height: 22,
+    tintColor: "#C8D7FF",
+    marginRight: 12,
+  },
+
   input: {
-    height: 56,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,255,255,0.35)',
-    color: '#FFFFFF',
+    flex: 1,
+    color: "white",
     fontSize: 16,
-    fontStyle: 'italic',
-    paddingVertical: Spacing.one,
-    marginBottom: Spacing.three,
-    backgroundColor: 'transparent',
   },
-  primaryButton: {
-    marginTop: Spacing.three,
-    backgroundColor: '#2E5CFF',
-    borderRadius: 999,
-    paddingVertical: Spacing.three,
-    alignItems: 'center',
+
+  forgot: {
+    color: "#6EA9FF",
+    textAlign: "right",
+    fontWeight: "600",
   },
-  primaryButtonText: {
-    color: '#FFFFFF',
+
+  loginButton: {
+    height: 60,
+    borderRadius: 30,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+
+  loginText: {
+    color: "white",
+    fontSize: 18,
+    fontWeight: "800",
+    letterSpacing: 1,
+  },
+
+  or: {
+    textAlign: "center",
+    color: "#9FB7FF",
+    fontWeight: "700",
+    marginVertical: 8,
+  },
+
+  googleButton: {
+    height: 58,
+    borderRadius: 18,
+    backgroundColor: "white",
+    justifyContent: "center",
+    alignItems: "center",
+    flexDirection: "row",
+  },
+
+  googleIcon: {
+    width: 24,
+    height: 24,
+    marginRight: 12,
+    resizeMode: "contain",
+  },
+
+  googleText: {
+    fontSize: 17,
+    fontWeight: "700",
+    color: "#333",
+  },
+
+  bottom: {
+    alignItems: "center",
+    marginBottom: 15,
+  },
+
+  bottomText: {
+    color: "#C9D8FF",
+  },
+
+  signup: {
+    marginTop: 6,
+    color: "#6EA9FF",
+    fontWeight: "700",
     fontSize: 16,
-    fontWeight: '800',
-  },
-  linkRow: {
-    width: '100%',
-    alignItems: 'center',
-    marginBottom: Spacing.four,
-  },
-  linkText: {
-    color: '#9FB7FF',
-    fontWeight: '700',
-    marginTop: Spacing.one,
   },
 });

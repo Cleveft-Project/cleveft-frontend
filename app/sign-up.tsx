@@ -1,146 +1,163 @@
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { WelcomeLogo } from '@/components/welcome-logo';
-import { Spacing } from '@/constants/theme';
-import { LinearGradient } from 'expo-linear-gradient';
-import { useRouter } from 'expo-router';
-import { Pressable, SafeAreaView, StyleSheet, TextInput, View } from 'react-native';
+import { IMAGES } from "@/constants/image";
+import { LinearGradient } from "expo-linear-gradient";
+import { useRouter } from "expo-router";
+import { useState } from "react";
+import {
+    Image,
+    Pressable,
+    SafeAreaView,
+    StyleSheet,
+    Text,
+    TextInput,
+    View,
+} from "react-native";
 
 export default function SignUpScreen() {
   const router = useRouter();
 
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+
   return (
-    <ThemedView style={styles.container}>
-      <LinearGradient
-        colors={['#111E82', '#07143D']}
-        start={[0.1, 0]}
-        end={[0.9, 1]}
-        style={styles.gradient}
-      >
-        <SafeAreaView style={styles.safeArea}>
-          <View style={styles.backgroundShapeTop} />
-          <View style={styles.backgroundShapeBottom} />
+    <LinearGradient
+      colors={["#1438C9", "#081A63", "#020A28"]}
+      style={styles.container}
+    >
+      <SafeAreaView style={styles.safeArea}>
 
-          <Pressable style={styles.backButton} onPress={() => router.back()}>
-            <ThemedText style={styles.backButtonText}>{'<'} </ThemedText>
+        {/* Back */}
+        <Pressable onPress={() => router.back()}>
+          <Image source={IMAGES.back} style={styles.backIcon} />
+        </Pressable>
+
+        {/* Header */}
+        <View style={styles.header}>
+          <Text style={styles.title}>Create Account</Text>
+          <Text style={styles.subtitle}>
+            Sign up to start learning
+          </Text>
+        </View>
+
+        {/* Form */}
+        <View style={styles.form}>
+
+          <TextInput
+            placeholder="Full Name"
+            placeholderTextColor="#BFCBFF"
+            value={name}
+            onChangeText={setName}
+            style={styles.input}
+          />
+
+          <TextInput
+            placeholder="Email Address"
+            placeholderTextColor="#BFCBFF"
+            value={email}
+            onChangeText={setEmail}
+            style={styles.input}
+          />
+
+          <TextInput
+            placeholder="Password"
+            placeholderTextColor="#BFCBFF"
+            secureTextEntry
+            value={password}
+            onChangeText={setPassword}
+            style={styles.input}
+          />
+
+        </View>
+
+        {/* Button */}
+        <Pressable>
+          <LinearGradient
+            colors={["#4B84FF", "#2960FF"]}
+            style={styles.button}
+          >
+            <Text style={styles.buttonText}>CREATE ACCOUNT</Text>
+          </LinearGradient>
+        </Pressable>
+
+        {/* Bottom */}
+        <View style={styles.bottom}>
+          <Text style={{ color: "#C9D8FF" }}>
+            Already have an account?
+          </Text>
+
+          <Pressable onPress={() => router.push("/login")}>
+            <Text style={styles.link}>Login</Text>
           </Pressable>
+        </View>
 
-          <View style={styles.logoContainer}>
-            <WelcomeLogo size={90} />
-          </View>
-
-          <View style={styles.header}>
-            <ThemedText type="title" style={styles.title}>
-              Create Account :)
-            </ThemedText>
-          </View>
-
-          <View style={styles.formCard}>
-            <TextInput placeholder="Enter Email Id" placeholderTextColor="#9FAAE4" style={styles.input} />
-            <TextInput placeholder="Create Username" placeholderTextColor="#9FAAE4" style={styles.input} />
-            <TextInput
-              placeholder="Create Password"
-              placeholderTextColor="#9FAAE4"
-              secureTextEntry
-              style={styles.input}
-            />
-            <Pressable style={styles.primaryButton} onPress={() => router.push('/welcome')}>
-              <ThemedText style={styles.primaryButtonText}>Sign Up</ThemedText>
-            </Pressable>
-          </View>
-        </SafeAreaView>
-      </LinearGradient>
-    </ThemedView>
+      </SafeAreaView>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  gradient: {
-    flex: 1,
-  },
+  container: { flex: 1 },
+
   safeArea: {
     flex: 1,
-    paddingHorizontal: Spacing.four,
-    justifyContent: 'flex-start',
-    paddingVertical: Spacing.four,
+    padding: 25,
+    justifyContent: "space-between",
   },
-  backgroundShapeTop: {
-    position: 'absolute',
-    top: -120,
-    left: -80,
-    width: 260,
-    height: 260,
-    borderRadius: 180,
-    backgroundColor: 'rgba(161, 123, 255, 0.22)',
+
+  backIcon: {
+    width: 24,
+    height: 24,
+    tintColor: "white",
   },
-  backgroundShapeBottom: {
-    position: 'absolute',
-    bottom: -130,
-    right: -100,
-    width: 320,
-    height: 320,
-    borderRadius: 180,
-    backgroundColor: 'rgba(72, 108, 255, 0.24)',
-  },
-  backButton: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: 'rgba(255,255,255,0.08)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: Spacing.four,
-  },
-  backButtonText: {
-    color: '#FFFFFF',
-    fontSize: 24,
-    fontWeight: '700',
-  },
-  logoContainer: {
-    alignItems: 'center',
-    marginTop: Spacing.two,
-    marginBottom: Spacing.four,
-  },
+
   header: {
-    marginBottom: Spacing.four,
+    marginTop: 10,
   },
+
   title: {
-    color: '#FFFFFF',
-    fontSize: 40,
-    textAlign: 'center',
+    fontSize: 32,
+    fontWeight: "800",
+    color: "white",
   },
-  formCard: {
-    width: '100%',
-    padding: Spacing.four,
-    borderRadius: 40,
-    backgroundColor: 'rgba(255,255,255,0.08)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.12)',
+
+  subtitle: {
+    color: "#C9D8FF",
+    marginTop: 6,
   },
+
+  form: {
+    gap: 14,
+    marginTop: 20,
+  },
+
   input: {
-    height: 56,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,255,255,0.35)',
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontStyle: 'italic',
-    paddingVertical: Spacing.one,
-    marginBottom: Spacing.three,
-    backgroundColor: 'transparent',
+    height: 58,
+    borderRadius: 16,
+    paddingHorizontal: 16,
+    backgroundColor: "rgba(255,255,255,0.08)",
+    color: "white",
   },
-  primaryButton: {
-    marginTop: Spacing.three,
-    backgroundColor: '#2E5CFF',
-    borderRadius: 999,
-    paddingVertical: Spacing.three,
-    alignItems: 'center',
+
+  button: {
+    height: 60,
+    borderRadius: 30,
+    justifyContent: "center",
+    alignItems: "center",
   },
-  primaryButtonText: {
-    color: '#FFFFFF',
+
+  buttonText: {
+    color: "white",
+    fontWeight: "800",
     fontSize: 16,
-    fontWeight: '800',
+  },
+
+  bottom: {
+    alignItems: "center",
+    gap: 8,
+  },
+
+  link: {
+    color: "#6EA9FF",
+    fontWeight: "700",
   },
 });

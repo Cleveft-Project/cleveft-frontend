@@ -48,7 +48,7 @@ export default function HomeScreen() {
           {/* Join Button */}
           <Pressable
             style={styles.buttonWrapper}
-            onPress={() => router.push("/login")}
+            onPress={() => router.replace("/login")}
           >
             <LinearGradient
               colors={["#4E84FF", "#2463FF"]}
@@ -56,7 +56,9 @@ export default function HomeScreen() {
               end={{ x: 1, y: 1 }}
               style={styles.button}
             >
-              <Text style={styles.buttonText}>JOIN NOW</Text>
+              <Text style={styles.buttonText}>
+                 JOIN NOW   →
+            </Text>
             </LinearGradient>
           </Pressable>
 
@@ -144,7 +146,7 @@ const styles = StyleSheet.create({
     width: 0,
     height: 4,
   },
-  textShadowRadius: 22,
+  textShadowRadius: 12,
 },
 
   subtitle: {
@@ -175,8 +177,8 @@ const styles = StyleSheet.create({
 
   button: {
   width: 330,
-  height: 68,
-  borderRadius: 34,
+  height: 70,
+  borderRadius: 35,
 
   justifyContent: "center",
   alignItems: "center",
