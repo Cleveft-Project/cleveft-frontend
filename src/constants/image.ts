@@ -24,4 +24,7 @@ export const IMAGES = {
   copy: require('../../assets/icons/copy.png'),
   share: require('../../assets/icons/share.png'),
   download: require('../../assets/icons/download.png'),
+
+  email: require("../../assets/icons/email.png"),
+  lock: require("../../assets/icons/lock.png"),
 };
