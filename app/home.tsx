@@ -45,33 +45,40 @@ export default function HomeScreen() {
         {/* Quick Actions */}
         <View style={styles.cards}>
 
-          <Pressable style={styles.card}>
-            <View style={styles.cardLeft}>
-              <Image
-                source={IMAGES.microphone}
-                style={styles.cardIcon}
-              />
-              <Text style={styles.cardText}>
-                Record Audio
-              </Text>
-            </View>
+          <Pressable
+            style={styles.card}
+            onPress={() => router.push("/record")}
+>
+  <View style={styles.cardLeft}>
+    <Image
+      source={IMAGES.microphone}
+      style={styles.cardIcon}
+    />
+    <Text style={styles.cardText}>
+      Record Audio
+    </Text>
+  </View>
 
-            <Text style={styles.arrow}>›</Text>
-          </Pressable>
+  <Text style={styles.arrow}>›</Text>
+</Pressable>
 
-          <Pressable style={styles.card}>
-            <View style={styles.cardLeft}>
-              <Image
-                source={IMAGES.document}
-                style={styles.cardIcon}
-              />
-              <Text style={styles.cardText}>
-                Upload File
-              </Text>
-            </View>
+         <Pressable
+  style={styles.card}
+  onPress={() => router.push("/upload")}
+>
+  <View style={styles.cardLeft}>
+    <Image
+      source={IMAGES.document}
+      style={styles.cardIcon}
+    />
 
-            <Text style={styles.arrow}>›</Text>
-          </Pressable>
+    <Text style={styles.cardText}>
+      Upload File
+    </Text>
+  </View>
+
+  <Text style={styles.arrow}>›</Text>
+</Pressable>
 
           <Pressable style={styles.card}>
             <View style={styles.cardLeft}>
