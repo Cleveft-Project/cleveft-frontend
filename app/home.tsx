@@ -24,7 +24,10 @@ export default function HomeScreen() {
         <View style={styles.headerGlow} />
 
         {/* Menu */}
-        <Pressable style={styles.menuButton}>
+        <Pressable
+           style={styles.menuButton}
+          onPress={() => router.push("/settings")}
+        >
           <Image
             source={IMAGES.menu}
             style={styles.menuIcon}
@@ -80,19 +83,53 @@ export default function HomeScreen() {
   <Text style={styles.arrow}>›</Text>
 </Pressable>
 
-          <Pressable style={styles.card}>
-            <View style={styles.cardLeft}>
-              <Image
-                source={IMAGES.robot}
-                style={styles.cardIcon}
-              />
-              <Text style={styles.cardText}>
-                AI Assistant
-              </Text>
-            </View>
+          <Pressable
+  style={styles.card}
+  onPress={() => router.push("/chat")}
+>
+  <View style={styles.cardLeft}>
+    <Image
+      source={IMAGES.robot}
+      style={styles.cardIcon}
+    />
 
-            <Text style={styles.arrow}>›</Text>
-          </Pressable>
+    <Text style={styles.cardText}>
+      AI Assistant
+    </Text>
+  </View>
+
+  <Text style={styles.arrow}>›</Text>
+</Pressable>
+
+<Pressable
+  style={styles.card}
+  onPress={() => router.push("/history")}
+>
+  <View style={styles.cardLeft}>
+    <Image
+      source={IMAGES.history}
+      style={styles.cardIcon}
+    />
+    <Text style={styles.cardText}>History</Text>
+  </View>
+
+  <Text style={styles.arrow}>›</Text>
+</Pressable>
+
+<Pressable
+  style={styles.card}
+  onPress={() => router.push("/profile")}
+>
+  <View style={styles.cardLeft}>
+    <Image
+      source={IMAGES.profile}
+      style={styles.cardIcon}
+    />
+    <Text style={styles.cardText}>Profile</Text>
+  </View>
+
+  <Text style={styles.arrow}>›</Text>
+</Pressable>
 
         </View>
 
@@ -104,7 +141,10 @@ export default function HomeScreen() {
             Recent Activity
           </Text>
 
-          <View style={styles.item}>
+          <Pressable
+          style={styles.item}
+          onPress={() => router.push("/transcript")}
+>
             <Text style={styles.itemTitle}>
               Machine Learning Lecture.mp3
             </Text>
@@ -112,7 +152,7 @@ export default function HomeScreen() {
             <Text style={styles.itemSubtitle}>
               Yesterday • 18 mins
             </Text>
-          </View>
+          </Pressable>
 
           <View style={styles.item}>
             <Text style={styles.itemTitle}>

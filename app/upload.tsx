@@ -1,11 +1,11 @@
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import {
-    Pressable,
-    SafeAreaView,
-    StyleSheet,
-    Text,
-    View,
+  Pressable,
+  SafeAreaView,
+  StyleSheet,
+  Text,
+  View,
 } from "react-native";
 
 export default function UploadScreen() {
@@ -48,7 +48,10 @@ export default function UploadScreen() {
             MP3 • WAV • M4A • AAC
           </Text>
 
-          <Pressable style={styles.primaryButton}>
+          <Pressable
+             style={styles.primaryButton}
+             onPress={() => router.push("/transcript")}
+          >
             <Text style={styles.primaryButtonText}>
               Browse Files
             </Text>

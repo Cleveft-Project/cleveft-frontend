@@ -92,6 +92,7 @@ export default function RecordScreen() {
       setRecordedUri(audioRecorder.uri ?? null);
       setHasStarted(false);
       setIsPaused(false);
+      router.push("/transcript");
     } catch (err) {
       console.error("Failed to stop recording", err);
       Alert.alert("Error", "Couldn't stop recording.");
