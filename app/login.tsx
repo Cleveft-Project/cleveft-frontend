@@ -3,13 +3,13 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { useState } from "react";
 import {
-    Image,
-    Pressable,
-    SafeAreaView,
-    StyleSheet,
-    Text,
-    TextInput,
-    View,
+  Image,
+  Pressable,
+  SafeAreaView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
 } from "react-native";
 
 export default function LoginScreen() {
@@ -36,30 +36,45 @@ export default function LoginScreen() {
           </Text>
         </View>
 
-        <View style={styles.form}>
+  <View style={styles.form}>
 
-          <View style={styles.inputContainer}>
-            <Image source={IMAGES.profile} style={styles.inputIcon} />
-            <TextInput
-              placeholder="Email Address"
-              placeholderTextColor="#AFC4FF"
-              value={email}
-              onChangeText={setEmail}
-              style={styles.input}
-            />
-          </View>
+  {/* Email */}
+  <View style={styles.inputContainer}>
+    <Image
+      source={IMAGES.email}
+      style={styles.inputIcon}
+    />
+    <TextInput
+      placeholder="Email Address"
+      placeholderTextColor="#AFC4FF"
+      value={email}
+      onChangeText={setEmail}
+      style={styles.input}
+      keyboardType="email-address"
+      autoCapitalize="none"
+      autoCorrect={false}
+    />
+  </View>
 
-          <View style={styles.inputContainer}>
-            <Image source={IMAGES.profile} style={styles.inputIcon} />
-            <TextInput
-              placeholder="Password"
-              placeholderTextColor="#AFC4FF"
-              secureTextEntry
-              value={password}
-              onChangeText={setPassword}
-              style={styles.input}
-            />
-          </View>
+  {/* Password */}
+  <View style={styles.inputContainer}>
+    <Image
+      source={IMAGES.lock}
+      style={styles.inputIcon}
+    />
+    <TextInput
+      placeholder="Password"
+      placeholderTextColor="#AFC4FF"
+      secureTextEntry
+      value={password}
+      onChangeText={setPassword}
+      style={styles.input}
+      autoCapitalize="none"
+      autoCorrect={false}
+    />
+  </View>
+
+</View>
 
           <Pressable onPress={() => router.push("/forgot-password")}>
             <Text style={styles.forgot}>Forgot Password?</Text>
@@ -81,7 +96,7 @@ export default function LoginScreen() {
             <Text style={styles.googleText}>Google</Text>
           </Pressable>
 
-        </View>
+        
 
         <View style={styles.bottom}>
           <Text style={styles.bottomText}>

@@ -27,4 +27,4 @@ export const IMAGES = {
 
   email: require("../../assets/icons/email.png"),
   lock: require("../../assets/icons/lock.png"),
-};
+}; 
