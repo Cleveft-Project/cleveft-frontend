@@ -3,13 +3,14 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { useState } from "react";
 import {
-    Image,
-    Pressable,
-    SafeAreaView,
-    StyleSheet,
-    Text,
-    TextInput,
-    View,
+  Alert,
+  Image,
+  Pressable,
+  SafeAreaView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
 } from "react-native";
 
 export default function SignUpScreen() {
@@ -18,6 +19,27 @@ export default function SignUpScreen() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+
+  const handleCreateAccount = () => {
+  if (!name.trim() || !email.trim() || !password.trim()) {
+    Alert.alert(
+      "Missing Information",
+      "Please fill in all fields."
+    );
+    return;
+  }
+
+  Alert.alert(
+    "Success",
+    "Account created successfully!",
+    [
+      {
+        text: "Continue",
+        onPress: () => router.replace("/home"),
+      },
+    ]
+  );
+};
 
   return (
     <LinearGradient
@@ -70,12 +92,14 @@ export default function SignUpScreen() {
         </View>
 
         {/* Button */}
-        <Pressable>
+        <Pressable onPress={handleCreateAccount}>
           <LinearGradient
             colors={["#4B84FF", "#2960FF"]}
-            style={styles.button}
-          >
-            <Text style={styles.buttonText}>CREATE ACCOUNT</Text>
+          style={styles.button}
+  >
+          <Text style={styles.buttonText}>
+              CREATE ACCOUNT
+          </Text>
           </LinearGradient>
         </Pressable>
 
