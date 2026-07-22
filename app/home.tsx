@@ -5,6 +5,7 @@ import {
   Image,
   Pressable,
   SafeAreaView,
+  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -19,6 +20,11 @@ export default function HomeScreen() {
       style={styles.container}
     >
       <SafeAreaView style={styles.safeArea}>
+
+  <ScrollView
+    contentContainerStyle={styles.scrollContent}
+    showsVerticalScrollIndicator={false}
+  >
 
         {/* Background Glow */}
         <View style={styles.headerGlow} />
@@ -166,7 +172,9 @@ export default function HomeScreen() {
 
         </View>
 
-      </SafeAreaView>
+       </ScrollView>
+
+</SafeAreaView>
     </LinearGradient>
   );
 }
@@ -326,9 +334,14 @@ const styles = StyleSheet.create({
   },
 
   itemSubtitle: {
-    color: "#9DB2F5",
-    marginTop: 6,
-    fontSize: 13,
-  },
+  color: "#9DB2F5",
+  marginTop: 6,
+  fontSize: 13,
+},
+
+scrollContent: {
+  flexGrow: 1,
+  paddingBottom: 40,
+},
 
 });
