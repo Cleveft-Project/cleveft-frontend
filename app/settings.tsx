@@ -1,213 +1,254 @@
-import { LinearGradient } from "expo-linear-gradient";
-import { useRouter } from "expo-router";
-import { useState } from "react";
-import {
-    Pressable,
-    SafeAreaView,
-    StyleSheet,
-    Switch,
-    Text,
-    View,
-} from "react-native";
+import { useFocusEffect, useRouter } from 'expo-router';
+import React, { useCallback, useState } from 'react';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
+
+import { ApiError, BASE_URL, authApi, lecturesApi } from '@/api';
+import { GlassCard } from '@/components/glass-card';
+import { ScreenHeader, SectionHeader } from '@/components/headers';
+import { NeonButton } from '@/components/neon-button';
+import { PlanCard } from '@/components/plan-card';
+import { Screen } from '@/components/screen';
+import { TextField } from '@/components/text-field';
+import { ThemeToggle } from '@/components/theme-toggle';
+import { useAsync } from '@/hooks/use-async';
+import { useAuth } from '@/state/auth-context';
+import { radius, spacing, typography, useTheme, useThemedStyles, type Palette } from '@/theme';
 
 export default function SettingsScreen() {
+  const styles = useThemedStyles(createStyles);
+  const { isDark } = useTheme();
   const router = useRouter();
+  const { user, signOut, updateUser } = useAuth();
 
-  const [notifications, setNotifications] = useState(true);
-  const [darkMode, setDarkMode] = useState(true);
+  const usage = useAsync(() => lecturesApi.usage(), []);
+
+  // Coming back from the upgrade screen changes both the tier and what the
+  // usage bar should say, so the card re-reads rather than showing the figures
+  // the student saw before they paid.
+  useFocusEffect(
+    useCallback(() => {
+      void usage.reload();
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []),
+  );
+
+  const [fullName, setFullName] = useState(user?.fullName ?? '');
+  const [university, setUniversity] = useState(user?.university ?? '');
+  const [programme, setProgramme] = useState(user?.programme ?? '');
+
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const save = async () => {
+    setSaving(true);
+    setSaved(false);
+    setError(null);
+    try {
+      const updated = await authApi.updateProfile({
+        fullName: fullName.trim(),
+        university: university.trim(),
+        programme: programme.trim(),
+      });
+      updateUser(updated);
+      setSaved(true);
+    } catch (caught) {
+      setError(caught instanceof ApiError ? caught.message : 'Could not save your profile.');
+    } finally {
+      setSaving(false);
+    }
+  };
 
   return (
-    <LinearGradient
-      colors={["#1438C9", "#081A63", "#020A28"]}
-      style={styles.container}
-    >
-      <SafeAreaView style={styles.safeArea}>
+    <Screen edges={['top', 'bottom']}>
+      <ScreenHeader title="Your profile" subtitle={user?.email} />
 
-        {/* Back Button */}
-        <Pressable
-          style={styles.backButton}
-          onPress={() => router.back()}
-        >
-          <Text style={styles.backText}>←</Text>
-        </Pressable>
+      <ScrollView
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
+        <GlassCard style={styles.identityCard}>
+          <View style={styles.avatar}>
+            <Text style={styles.avatarText}>
+              {(user?.fullName?.trim()?.[0] ?? 'C').toUpperCase()}
+            </Text>
+          </View>
+          <View style={styles.identityText}>
+            <Text style={styles.identityName} numberOfLines={1}>
+              {user?.fullName}
+            </Text>
+            <Text style={styles.identityEmail} numberOfLines={1}>
+              {user?.email}
+            </Text>
+          </View>
+        </GlassCard>
 
-        {/* Header */}
-        <View style={styles.header}>
-          <Text style={styles.title}>Settings</Text>
-          <Text style={styles.subtitle}>
-            Manage your CLEVEFT preferences
+        <SectionHeader title="Appearance" />
+        <GlassCard>
+          <View style={styles.appearanceRow}>
+            <View style={styles.appearanceText}>
+              <Text style={styles.appearanceTitle}>{isDark ? 'Dark' : 'Light'}</Text>
+              <Text style={styles.appearanceCopy}>
+                {isDark
+                  ? 'Easier on the eyes in a dim lecture hall.'
+                  : 'Better in daylight and for long reading sessions.'}
+              </Text>
+            </View>
+            <ThemeToggle />
+          </View>
+        </GlassCard>
+
+        <SectionHeader title="Plan" />
+        <PlanCard
+          plan={user?.plan ?? 'FREE'}
+          usage={usage.data}
+          onUpgrade={() => router.push('/upgrade')}
+          onManage={() => router.push('/upgrade')}
+        />
+
+        <SectionHeader title="Details" />
+        <GlassCard>
+          <View style={styles.form}>
+            <TextField
+              label="FULL NAME"
+              value={fullName}
+              onChangeText={setFullName}
+              autoCapitalize="words"
+            />
+            <TextField
+              label="UNIVERSITY"
+              value={university}
+              onChangeText={setUniversity}
+              placeholder="Add your university"
+              autoCapitalize="words"
+            />
+            <TextField
+              label="PROGRAMME"
+              value={programme}
+              onChangeText={setProgramme}
+              placeholder="Add your programme"
+              autoCapitalize="words"
+            />
+          </View>
+
+          {error ? <Text style={styles.error}>{error}</Text> : null}
+          {saved ? <Text style={styles.saved}>Profile updated.</Text> : null}
+
+          <NeonButton
+            label="Save changes"
+            onPress={save}
+            loading={saving}
+            style={styles.saveButton}
+          />
+        </GlassCard>
+
+        <SectionHeader title="Connection" />
+        <GlassCard>
+          <Text style={styles.metaLabel}>GATEWAY</Text>
+          <Text style={styles.metaValue}>{BASE_URL}</Text>
+          <Text style={styles.metaHint}>
+            Set EXPO_PUBLIC_GATEWAY_URL in .env to point the app at a different machine. On a
+            physical device this must be your computer&apos;s LAN address, not localhost.
           </Text>
-        </View>
+        </GlassCard>
 
-
-        {/* Settings Options */}
-        <View style={styles.section}>
-
-          <View style={styles.item}>
-            <View>
-              <Text style={styles.itemTitle}>
-                Notifications
-              </Text>
-              <Text style={styles.itemSubtitle}>
-                Receive updates and reminders
-              </Text>
-            </View>
-
-            <Switch
-              value={notifications}
-              onValueChange={setNotifications}
-              trackColor={{
-                false: "#555",
-                true: "#4B84FF",
-              }}
-            />
-          </View>
-
-
-          <View style={styles.item}>
-            <View>
-              <Text style={styles.itemTitle}>
-                Dark Mode
-              </Text>
-              <Text style={styles.itemSubtitle}>
-                Use dark appearance
-              </Text>
-            </View>
-
-            <Switch
-              value={darkMode}
-              onValueChange={setDarkMode}
-              trackColor={{
-                false: "#555",
-                true: "#4B84FF",
-              }}
-            />
-          </View>
-
-
-          <Pressable style={styles.item}>
-            <Text style={styles.itemTitle}>
-              Language
-            </Text>
-
-            <Text style={styles.value}>
-              English ›
-            </Text>
-          </Pressable>
-
-
-          <Pressable style={styles.item}>
-            <Text style={styles.itemTitle}>
-              Help & Support
-            </Text>
-
-            <Text style={styles.value}>
-              ›
-            </Text>
-          </Pressable>
-
-
-          <Pressable style={styles.item}>
-            <Text style={styles.itemTitle}>
-              Privacy Policy
-            </Text>
-
-            <Text style={styles.value}>
-              ›
-            </Text>
-          </Pressable>
-
-        </View>
-
-
-        <Text style={styles.version}>
-          CLEVEFT v1.0.0
-        </Text>
-
-
-      </SafeAreaView>
-    </LinearGradient>
+        <NeonButton
+          label="Sign out"
+          onPress={signOut}
+          variant="danger"
+          style={styles.signOut}
+        />
+      </ScrollView>
+    </Screen>
   );
 }
 
-
-const styles = StyleSheet.create({
-
-  container:{
-    flex:1,
+const createStyles = (c: Palette) => StyleSheet.create({
+  content: {
+    paddingHorizontal: spacing.xl,
+    paddingBottom: spacing.xxxl,
   },
-
-  safeArea:{
-    flex:1,
-    padding:24,
+  identityCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.lg,
   },
-
-  backButton:{
-    width:46,
-    height:46,
-    borderRadius:23,
-    backgroundColor:"rgba(255,255,255,0.08)",
-    justifyContent:"center",
-    alignItems:"center",
+  avatar: {
+    width: 56,
+    height: 56,
+    borderRadius: radius.pill,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: c.accentSoft,
+    borderWidth: StyleSheet.hairlineWidth * 2,
+    borderColor: c.borderStrong,
   },
-
-  backText:{
-    color:"white",
-    fontSize:22,
-    fontWeight:"700",
+  avatarText: {
+    ...typography.title,
+    color: c.accent,
   },
-
-  header:{
-    marginTop:25,
-    marginBottom:30,
+  identityText: {
+    flex: 1,
+    gap: 2,
   },
-
-  title:{
-    color:"white",
-    fontSize:34,
-    fontWeight:"900",
+  identityName: {
+    ...typography.heading,
+    color: c.text,
   },
-
-  subtitle:{
-    color:"#BFD2FF",
-    marginTop:6,
+  identityEmail: {
+    ...typography.caption,
+    color: c.textMuted,
   },
-
-  section:{
-    gap:16,
+  form: {
+    gap: spacing.lg,
   },
-
-  item:{
-    backgroundColor:"rgba(255,255,255,0.08)",
-    padding:18,
-    borderRadius:20,
-    flexDirection:"row",
-    justifyContent:"space-between",
-    alignItems:"center",
+  error: {
+    ...typography.caption,
+    color: c.danger,
+    marginTop: spacing.md,
   },
-
-  itemTitle:{
-    color:"white",
-    fontSize:17,
-    fontWeight:"700",
+  saved: {
+    ...typography.caption,
+    color: c.accent,
+    marginTop: spacing.md,
   },
-
-  itemSubtitle:{
-    color:"#BFD2FF",
-    marginTop:5,
-    fontSize:13,
+  saveButton: {
+    marginTop: spacing.xl,
   },
-
-  value:{
-    color:"#6EA8FF",
-    fontSize:16,
-    fontWeight:"700",
+  metaLabel: {
+    ...typography.micro,
+    color: c.textSecondary,
+    letterSpacing: 0.5,
   },
-
-  version:{
-    marginTop:"auto",
-    textAlign:"center",
-    color:"#8EA7E8",
+  metaValue: {
+    ...typography.body,
+    color: c.text,
+    marginTop: spacing.xs,
   },
-
+  metaHint: {
+    ...typography.micro,
+    color: c.textMuted,
+    marginTop: spacing.md,
+  },
+  appearanceRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.lg,
+  },
+  appearanceText: {
+    flex: 1,
+    gap: 2,
+  },
+  appearanceTitle: {
+    ...typography.bodyStrong,
+    color: c.text,
+  },
+  appearanceCopy: {
+    ...typography.micro,
+    color: c.textMuted,
+  },
+  signOut: {
+    marginTop: spacing.xxl,
+  },
 });

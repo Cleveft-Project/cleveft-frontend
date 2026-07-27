@@ -31,7 +31,10 @@ yarn-error.*
 *.pem
 
 # local env files
+# .env holds a machine-specific gateway address, so it is never committed.
+.env
 .env*.local
+!.env.example
 
 # typescript
 *.tsbuildinfo
