@@ -1,56 +1,83 @@
-# Welcome to your Expo app 👋
+# cleveft-frontend
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+The Cleveft mobile app — an Expo (React Native + TypeScript) client for
+recording lectures, reading AI-structured notes, querying them, and preparing
+for exams.
 
-## Get started
+Everything the app calls goes through the API gateway on port `8080`. It never
+talks to a microservice directly.
 
-1. Install dependencies
+## Screens
 
-   ```bash
-   npm install
-   ```
+Routing is file-based via `expo-router`, split into two groups so authenticated
+and unauthenticated states cannot bleed into each other.
 
-2. Start the app
+| Route                | Purpose                                                        |
+| -------------------- | -------------------------------------------------------------- |
+| `(auth)/welcome`     | First-run landing                                              |
+| `(auth)/login`       | Sign in                                                        |
+| `(auth)/sign-up`     | Register                                                       |
+| `(tabs)/home`        | Dashboard — recent lectures, streak, weak areas, readiness      |
+| `(tabs)/record`      | Audio recorder with live waveform, plus PDF import              |
+| `(tabs)/chat`        | RAG chat over your own lectures, with transcript citations      |
+| `(tabs)/examprep`    | Quizzes and performance tracking                                |
+| `(tabs)/collab`      | Peers, shared learning paths and threads                        |
+| `transcript`         | Transcript reader and note view for one lecture                 |
+| `quiz`               | Quiz player                                                     |
+| `settings`           | Profile, theme, sign out                                        |
+| `upgrade`            | Plan tiers                                                      |
 
-   ```bash
-   npx expo start
-   ```
+## Project layout
 
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
-
-```bash
-npm run reset-project
+```
+app/            routes only — each file is a screen
+src/api/        typed gateway client, token storage, audio upload
+src/components/ shared UI primitives (cards, meters, headers, tab bar)
+src/theme/      light and dark palettes, spacing and typography tokens
+src/hooks/      data-fetching and async helpers
+src/state/      auth context
+src/lib/        pure helpers (streak computation, formatting)
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+Both colour schemes are defined in `src/theme/palettes.ts` with identical keys,
+so no component ever branches on which scheme is active.
 
-### Other setup steps
+## Getting started
 
-- To set up ESLint for linting, run `npx expo lint`, or follow our guide on ["Using ESLint and Prettier"](https://docs.expo.dev/guides/using-eslint/)
-- If you'd like to set up unit testing, follow our guide on ["Unit Testing with Jest"](https://docs.expo.dev/develop/unit-testing/)
-- Learn more about the TypeScript setup in this template in our guide on ["Using TypeScript"](https://docs.expo.dev/guides/typescript/)
+```bash
+npm install
+cp .env.example .env
+npx expo start
+```
 
-## Learn more
+### Pointing the app at your backend
 
-To learn more about developing your project with Expo, look at the following resources:
+`EXPO_PUBLIC_GATEWAY_URL` in `.env` decides which gateway the app calls. The
+correct value depends on where the app is running:
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+| Running on        | Value                                |
+| ----------------- | ------------------------------------ |
+| Web / simulator   | `http://localhost:8080`              |
+| Android emulator  | `http://10.0.2.2:8080`               |
+| Physical device   | `http://<your-computer-LAN-IP>:8080` |
 
-## Join the community
+A physical device cannot reach `localhost` — that resolves to the phone itself.
+Use the LAN address your computer reports on the same Wi-Fi network.
 
-Join our community of developers creating universal apps.
+The backend must be running for anything past the welcome screen to work; see
+[`cleveft-infra`](https://github.com/Cleveft-Project/cleveft-infra) for bringing
+up the stack.
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+### Expo Go version
+
+Expo Go supports one SDK generation at a time. This project targets **SDK 56**,
+so a newer Expo Go installed from the app store will refuse to open it. If you
+see "Project is incompatible with this version of Expo Go", install the matching
+build from `https://expo.dev/go?sdkVersion=56`.
+
+## Checks
+
+```bash
+npx tsc --noEmit     # type check
+npx expo lint        # lint
+```
