@@ -9,11 +9,15 @@ import Animated, {
   interpolate,
   useAnimatedStyle,
   useSharedValue,
+  withRepeat,
   withSequence,
+  withSpring,
   withTiming,
 } from 'react-native-reanimated';
 
+import { CELEBRATE, EASE_IN_OUT } from '@/components/animated/motion';
 import { usePressScale } from '@/components/animated/press-scale';
+import { CountUp } from '@/components/count-up';
 import { MILESTONES, nextMilestone, type StreakSummary } from '@/lib/streak';
 import { radius, spacing, typography, useTheme, useThemedStyles, type Palette } from '@/theme';
 
@@ -51,6 +55,54 @@ export function StreakCard({ streak, announce = false, onAct }: StreakCardProps)
   const alive = streak.current > 0;
   const pulse = useSharedValue(0);
 
+  /*
+   * Two different animations, doing two different jobs — worth separating
+   * because the note above ("a badge that animates permanently is decoration")
+   * is right about attention, and still leaves room for this.
+   *
+   * `pulse` is the *attention* mechanism: a one-shot halo, fired only when the
+   * streak is at risk, i.e. when there is something to do.
+   *
+   * `flicker` is *aliveness*: a lit flame that never moves reads as a printed
+   * icon. Its amplitude is a twentieth of the halo's and it carries no
+   * information, exactly like the mascot's breathing — the eye registers it as
+   * "burning" and never as "look here". It runs only while the streak is
+   * actually alive, so a dead streak sits genuinely cold.
+   */
+  const flicker = useSharedValue(0);
+  /** One-shot leap when today's day has just been earned. */
+  const earnedPop = useSharedValue(1);
+
+  useEffect(() => {
+    if (!alive) {
+      cancelAnimation(flicker);
+      flicker.value = withTiming(0, { duration: 200 });
+      return;
+    }
+
+    flicker.value = withRepeat(
+      withSequence(
+        withTiming(1, { duration: 1100, easing: EASE_IN_OUT }),
+        withTiming(0, { duration: 1400, easing: EASE_IN_OUT }),
+      ),
+      -1,
+      false,
+    );
+
+    return () => cancelAnimation(flicker);
+  }, [alive, flicker]);
+
+  useEffect(() => {
+    // The day is banked. This is the single most rewarding moment on the home
+    // screen, and previously it passed without any acknowledgement at all.
+    if (announce && streak.activeToday) {
+      earnedPop.value = withSequence(
+        withTiming(1.18, { duration: 160, easing: Easing.out(Easing.cubic) }),
+        withSpring(1, CELEBRATE),
+      );
+    }
+  }, [announce, earnedPop, streak.activeToday]);
+
   useEffect(() => {
     if (announce && streak.atRisk) {
       // One breath, not a loop. A halo that never stops is decoration the eye
@@ -71,7 +123,18 @@ export function StreakCard({ streak, announce = false, onAct }: StreakCardProps)
   }, [announce, pulse, streak.atRisk]);
 
   const flameStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: interpolate(pulse.value, [0, 1], [1, 1.12]) }],
+    // The three sources compose: a slow burn, the at-risk pulse, and the
+    // one-shot leap when the day is earned.
+    transform: [
+      {
+        scale:
+          interpolate(pulse.value, [0, 1], [1, 1.12]) *
+          interpolate(flicker.value, [0, 1], [1, 1.05]) *
+          earnedPop.value,
+      },
+      { rotate: `${interpolate(flicker.value, [0, 1], [-1.5, 1.5])}deg` },
+    ],
+    opacity: interpolate(flicker.value, [0, 1], [0.9, 1]),
   }));
 
   const haloStyle = useAnimatedStyle(() => ({
@@ -105,7 +168,7 @@ export function StreakCard({ streak, announce = false, onAct }: StreakCardProps)
 
           <View style={styles.headline}>
             <Text style={styles.count}>
-              {streak.current}
+              <CountUp value={streak.current} style={styles.count} duration={650} delay={140} />
               <Text style={styles.countUnit}>{streak.current === 1 ? ' day' : ' days'}</Text>
             </Text>
             <Text style={[styles.caption, streak.atRisk && styles.captionAtRisk]}>
