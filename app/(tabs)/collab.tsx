@@ -1,5 +1,5 @@
-import { useFocusEffect, useRouter } from 'expo-router';
-import React, { useCallback, useState } from 'react';
+import { useFocusEffect, useRouter, useScrollToTop } from 'expo-router';
+import React, { useCallback, useRef, useState } from 'react';
 import {
   Pressable,
   RefreshControl,
@@ -141,6 +141,10 @@ export default function CollabScreen() {
   const router = useRouter();
   const [tab, setTab] = useState<Tab>('feed');
 
+  // Tapping the tab you are already on returns you to the top of it.
+  const scrollRef = useRef<ScrollView>(null);
+  useScrollToTop(scrollRef);
+
   const feed = useAsync(() => collabApi.feed(), []);
   const myPaths = useAsync(() => collabApi.myPaths(), []);
   const discoverable = useAsync(() => collabApi.discoverPaths(), []);
@@ -253,6 +257,7 @@ export default function CollabScreen() {
       </View>
 
       <ScrollView
+        ref={scrollRef}
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"

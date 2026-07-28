@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useFocusEffect, useRouter } from 'expo-router';
-import React, { useCallback, useState } from 'react';
+import { useFocusEffect, useRouter, useScrollToTop } from 'expo-router';
+import React, { useCallback, useRef, useState } from 'react';
 import { RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { ApiError, examPrepApi } from '@/api';
@@ -28,6 +28,10 @@ export default function ExamPrepScreen() {
   const { colors } = useTheme();
   const styles = useThemedStyles(createStyles);
   const router = useRouter();
+
+  // Tapping the tab you are already on returns you to the top of it.
+  const scrollRef = useRef<ScrollView>(null);
+  useScrollToTop(scrollRef);
 
   const readiness = useAsync(() => examPrepApi.readiness(), []);
   const [quizzingCourse, setQuizzingCourse] = useState<string | null>(null);
@@ -83,6 +87,7 @@ export default function ExamPrepScreen() {
   return (
     <Screen>
       <ScrollView
+        ref={scrollRef}
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
         refreshControl={

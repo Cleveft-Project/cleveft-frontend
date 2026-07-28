@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useFocusEffect, useRouter } from 'expo-router';
-import React, { useCallback, useMemo, useState } from 'react';
+import { useFocusEffect, useRouter, useScrollToTop } from 'expo-router';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
 import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import {
   Easing,
@@ -64,6 +64,13 @@ export default function HomeScreen() {
   const styles = useThemedStyles(createStyles);
   const router = useRouter();
   const { user } = useAuth();
+
+  // Tapping the tab you are already on returns you to the top of it — the
+  // standard behaviour of every native tab bar, and the only way back up from
+  // the bottom of a long list without a lot of swiping. The tab bar already
+  // emits `tabPress`; this is what listens for it.
+  const scrollRef = useRef<ScrollView>(null);
+  useScrollToTop(scrollRef);
 
   /*
    * The greeting flourish: a ring pulsing out from behind the avatar, the
@@ -244,6 +251,7 @@ export default function HomeScreen() {
   return (
     <Screen>
       <ScrollView
+        ref={scrollRef}
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
         refreshControl={

@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useFocusEffect, useLocalSearchParams } from 'expo-router';
+import { useFocusEffect, useLocalSearchParams, useNavigation } from 'expo-router';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Alert,
@@ -29,6 +29,21 @@ const SUGGESTIONS = [
   'What formulas came up this week?',
   'Explain the part I keep getting wrong',
 ];
+
+/**
+ * The three members of a navigation object this screen needs to find the tab
+ * navigator above it.
+ *
+ * Structurally typed rather than imported, for the same reason `TabBarProps`
+ * in the tabs layout is: the real event map lives deep inside expo-router's
+ * vendored navigation types, and naming only what is used avoids coupling to
+ * that folder layout.
+ */
+interface NavigatorNode {
+  getState: () => { type?: string };
+  getParent: <T = NavigatorNode | undefined>() => T;
+  addListener: (event: 'tabPress', callback: () => void) => () => void;
+}
 
 function formatTimestamp(seconds?: number | null): string | null {
   if (seconds == null) {
@@ -219,6 +234,49 @@ export default function ChatScreen() {
   const scrollToEnd = useCallback(() => {
     requestAnimationFrame(() => listRef.current?.scrollToEnd({ animated: true }));
   }, []);
+
+  /**
+   * Tapping Ask while already on Ask jumps to the newest message.
+   *
+   * The other four tabs scroll to the *top* on a repeat tap, via
+   * `useScrollToTop`. That is wrong here: a conversation reads oldest-first,
+   * so its top is the question asked twenty turns ago. The useful destination
+   * in a chat is the bottom — where you were before scrolling up to re-read
+   * something, and where the answer you are waiting on will appear.
+   */
+  const navigation = useNavigation();
+  useEffect(() => {
+    /*
+     * Walk up from this screen looking for tab navigators, starting with
+     * `navigation` itself.
+     *
+     * Starting at `getParent()` instead is what broke the first attempt: in
+     * this version the screen's own navigation object can already be the tab
+     * navigator, so skipping straight to the parent landed on the root stack
+     * — which never emits `tabPress`, so nothing ever fired. This mirrors the
+     * walk in expo-router's own useScrollToTop, which is what makes the other
+     * four tabs work.
+     */
+    const unsubscribers: (() => void)[] = [];
+    let current = navigation as unknown as NavigatorNode | undefined;
+
+    while (current) {
+      if (current.getState().type === 'tab') {
+        unsubscribers.push(
+          current.addListener('tabPress', () => {
+            // Only the focused screen should react — otherwise every mounted
+            // tab scrolls itself on every tap of any tab.
+            if (navigation.isFocused()) {
+              scrollToEnd();
+            }
+          }),
+        );
+      }
+      current = current.getParent<NavigatorNode | undefined>();
+    }
+
+    return () => unsubscribers.forEach((unsubscribe) => unsubscribe());
+  }, [navigation, scrollToEnd]);
 
   const send = async (text: string) => {
     const question = text.trim();
