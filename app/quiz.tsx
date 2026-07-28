@@ -1,14 +1,17 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { ApiError, examPrepApi, lecturesApi } from '@/api';
 import type { AttemptResult, Quiz } from '@/api/types';
+import { CountUp } from '@/components/count-up';
 import { ErrorState, LoadingState, Pill } from '@/components/feedback';
 import { GlassCard } from '@/components/glass-card';
 import { ScreenHeader } from '@/components/headers';
 import { NeonButton } from '@/components/neon-button';
+import { QuizOption, type QuizOptionState } from '@/components/quiz-option';
 import { quizDisplayTitle } from '@/components/quiz-title';
+import { Sankofa, type SankofaMood } from '@/components/sankofa';
 import { Screen } from '@/components/screen';
 import { useAsync } from '@/hooks/use-async';
 import { radius, spacing, typography, useThemedStyles, type Palette } from '@/theme';
@@ -49,6 +52,20 @@ export default function QuizScreen() {
     result?.answers.forEach((answer) => map.set(answer.questionId, answer));
     return map;
   }, [result]);
+
+  /**
+   * How the mascot takes the result.
+   *
+   * The threshold for celebrating is deliberately generous. A bird that only
+   * cheers at 100% teaches the student that anything less is failure, which is
+   * the opposite of what a revision tool should do — and 60% on a first pass
+   * through a hard lecture is genuinely worth encouraging.
+   */
+  const resultMood: SankofaMood = !result
+    ? 'idle'
+    : result.percentage >= 60
+      ? 'celebrate'
+      : 'encourage';
 
   const submit = async () => {
     if (!data) {
@@ -116,7 +133,10 @@ export default function QuizScreen() {
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         {result ? (
           <GlassCard active style={styles.resultCard}>
-            <Text style={styles.resultPercent}>{result.percentage}%</Text>
+            {/* The bird reacts before the number finishes climbing, so the
+                student knows how they did from its posture alone. */}
+            <Sankofa mood={resultMood} size={104} />
+            <CountUp value={result.percentage} suffix="%" style={styles.resultPercent} delay={220} />
             <Text style={styles.resultCopy}>
               {result.percentage >= 80
                 ? 'Strong pass. This topic is holding up.'
@@ -154,40 +174,29 @@ export default function QuizScreen() {
                     const isCorrect = graded?.correctIndex === optionIndex;
                     const isWrongPick = !!graded && isSelected && !graded.correct;
 
+                    // One state rather than four booleans — see QuizOptionState.
+                    const state: QuizOptionState = isCorrect
+                      ? 'correct'
+                      : isWrongPick
+                        ? 'wrong'
+                        : graded
+                          ? 'muted'
+                          : isSelected
+                            ? 'selected'
+                            : 'idle';
+
                     return (
-                      <Pressable
+                      <QuizOption
                         key={optionIndex}
+                        label={OPTION_LABELS[optionIndex] ?? String(optionIndex + 1)}
+                        text={option}
+                        state={state}
+                        disabled={!!result}
                         onPress={() =>
                           !result &&
                           setAnswers((previous) => ({ ...previous, [question.id]: optionIndex }))
                         }
-                        disabled={!!result}
-                        style={[
-                          styles.option,
-                          isSelected && !result && styles.optionSelected,
-                          isCorrect && styles.optionCorrect,
-                          isWrongPick && styles.optionWrong,
-                        ]}
-                      >
-                        <View
-                          style={[
-                            styles.optionBadge,
-                            isSelected && !result && styles.optionBadgeSelected,
-                            isCorrect && styles.optionBadgeCorrect,
-                            isWrongPick && styles.optionBadgeWrong,
-                          ]}
-                        >
-                          <Text
-                            style={[
-                              styles.optionLabel,
-                              (isSelected || isCorrect || isWrongPick) && styles.optionLabelActive,
-                            ]}
-                          >
-                            {OPTION_LABELS[optionIndex] ?? optionIndex + 1}
-                          </Text>
-                        </View>
-                        <Text style={styles.optionText}>{option}</Text>
-                      </Pressable>
+                      />
                     );
                   })}
                 </View>
@@ -295,63 +304,6 @@ const createStyles = (c: Palette) => StyleSheet.create({
   options: {
     gap: spacing.sm,
     marginTop: spacing.lg,
-  },
-  option: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-    padding: spacing.md,
-    borderRadius: radius.md,
-    backgroundColor: c.surfaceSunken,
-    borderWidth: StyleSheet.hairlineWidth * 2,
-    borderColor: c.borderMuted,
-  },
-  optionSelected: {
-    backgroundColor: c.accentSoft,
-    borderColor: c.borderStrong,
-  },
-  optionCorrect: {
-    backgroundColor: c.accentSoft,
-    borderColor: c.accent,
-  },
-  optionWrong: {
-    backgroundColor: c.dangerSoft,
-    borderColor: c.danger,
-  },
-  optionBadge: {
-    width: 30,
-    height: 30,
-    borderRadius: radius.pill,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: c.surfaceSolid,
-    borderWidth: StyleSheet.hairlineWidth * 2,
-    borderColor: c.borderMuted,
-  },
-  optionBadgeSelected: {
-    backgroundColor: c.accentVivid,
-    borderColor: c.accent,
-  },
-  optionBadgeCorrect: {
-    backgroundColor: c.accentVivid,
-    borderColor: c.accent,
-  },
-  optionBadgeWrong: {
-    backgroundColor: c.danger,
-    borderColor: c.danger,
-  },
-  optionLabel: {
-    ...typography.caption,
-    color: c.textMuted,
-  },
-  optionLabelActive: {
-    color: c.textOnAccent,
-    fontWeight: '700',
-  },
-  optionText: {
-    ...typography.body,
-    color: c.text,
-    flex: 1,
   },
   explanation: {
     marginTop: spacing.lg,
