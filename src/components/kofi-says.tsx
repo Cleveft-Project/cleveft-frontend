@@ -16,7 +16,7 @@ import * as Speech from 'expo-speech';
 
 import { BOUNCY, EASE_OUT } from '@/components/animated/motion';
 import { Kofi, type KofiMood } from '@/components/kofi';
-import { useVoice } from '@/state/voice-context';
+import { useFeedback } from '@/state/feedback-context';
 import { radius, spacing, typography, useTheme, useThemedStyles, type Palette } from '@/theme';
 
 /**
@@ -201,7 +201,8 @@ const spokenThisSession = new Set<string>();
  *                opens, not every time the student returns to that tab.
  */
 export function useKofiSpeech(line: string, active = true, onceKey?: string) {
-  const { enabled } = useVoice();
+  const { voice } = useFeedback();
+  const enabled = voice.enabled;
 
   useEffect(() => {
     if (!enabled || !active || !line) {

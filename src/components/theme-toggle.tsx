@@ -10,6 +10,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 
+import { useHaptics } from '@/components/animated/haptics';
 import { radius, useTheme } from '@/theme';
 
 const TRACK_W = 68;
@@ -47,6 +48,7 @@ interface ThemeToggleProps {
  */
 export function ThemeToggle({ animateOnMount = false }: ThemeToggleProps) {
   const { isDark, toggle } = useTheme();
+  const haptics = useHaptics();
 
   // 0 = light (sun, knob left), 1 = dark (moon, knob right).
   const progress = useSharedValue(animateOnMount ? 0 : isDark ? 1 : 0);
@@ -85,7 +87,10 @@ export function ThemeToggle({ animateOnMount = false }: ThemeToggleProps) {
 
   return (
     <Pressable
-      onPress={toggle}
+      onPress={() => {
+        haptics.tap();
+        toggle();
+      }}
       accessibilityRole="switch"
       accessibilityState={{ checked: isDark }}
       accessibilityLabel={isDark ? 'Switch to light mode' : 'Switch to dark mode'}

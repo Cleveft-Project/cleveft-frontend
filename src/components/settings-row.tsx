@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
 import { Pressable, StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
 
+import { useHaptics } from '@/components/animated/haptics';
 import { radius, spacing, typography, useTheme, useThemedStyles, type Palette } from '@/theme';
 
 /**
@@ -43,6 +44,7 @@ export function SettingsRow({
 }) {
   const styles = useThemedStyles(createStyles);
   const { colors } = useTheme();
+  const haptics = useHaptics();
 
   const tint =
     tone === 'violet'
@@ -97,7 +99,10 @@ export function SettingsRow({
 
   return (
     <Pressable
-      onPress={onPress}
+      onPress={() => {
+        haptics.tap();
+        onPress();
+      }}
       accessibilityRole="button"
       accessibilityLabel={subtitle ? `${title}. ${subtitle}` : title}
       style={({ pressed }) => (pressed ? styles.pressed : undefined)}

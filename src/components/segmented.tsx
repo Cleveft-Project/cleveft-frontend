@@ -2,6 +2,7 @@ import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, { LinearTransition } from 'react-native-reanimated';
 
+import { useHaptics } from '@/components/animated/haptics';
 import { radius, spacing, typography, useThemedStyles, type Palette } from '@/theme';
 
 export interface SegmentOption<T extends string> {
@@ -37,6 +38,7 @@ export function Segmented<T extends string>({
   block = true,
 }: SegmentedProps<T>) {
   const styles = useThemedStyles(createStyles);
+  const haptics = useHaptics();
 
   return (
     <View style={[styles.track, block && styles.trackBlock]}>
@@ -49,7 +51,10 @@ export function Segmented<T extends string>({
             style={block ? styles.slot : undefined}
           >
             <Pressable
-              onPress={() => onChange(option.value)}
+              onPress={() => {
+                haptics.tap();
+                onChange(option.value);
+              }}
               accessibilityRole="tab"
               accessibilityState={{ selected }}
               style={[styles.segment, selected && styles.segmentActive]}

@@ -9,7 +9,8 @@ import { ScrollEdges, useScrollEdges } from '@/components/scroll-edges';
 import { Screen } from '@/components/screen';
 import { SettingsGroup, SettingsRow } from '@/components/settings-row';
 import { ThemeToggle } from '@/components/theme-toggle';
-import { useVoice } from '@/state/voice-context';
+import { useHaptics } from '@/components/animated/haptics';
+import { useFeedback } from '@/state/feedback-context';
 import { spacing, typography, useTheme, useThemedStyles, type Palette } from '@/theme';
 
 /**
@@ -27,7 +28,8 @@ export default function SettingsScreen() {
 
   // Content dissolves into the top and bottom edges as it scrolls.
   const edges = useScrollEdges();
-  const voice = useVoice();
+  const { voice, haptics } = useFeedback();
+  const feel = useHaptics();
 
   return (
     <Screen edges={['top', 'bottom']}>
@@ -58,21 +60,46 @@ export default function SettingsScreen() {
         </Animated.View>
 
         <Animated.View entering={staggeredEntrance(1)}>
-          <SectionHeader title="Mascot" />
+          <SectionHeader title="Feedback" />
           <SettingsGroup>
             <SettingsRow
               first
+              icon="phone-portrait"
+              title="Vibration"
+              subtitle={
+                haptics.enabled
+                  ? 'Answers and results answer back with a tap'
+                  : 'No vibration'
+              }
+              trailing={
+                <Switch
+                  value={haptics.enabled}
+                  onValueChange={(next) => {
+                    // Fires before the flag flips, so switching *off* still
+                    // gives one last confirming tap.
+                    feel.tap();
+                    haptics.setEnabled(next);
+                  }}
+                  trackColor={{ false: colors.surfaceSunken, true: colors.accentVivid }}
+                  thumbColor={colors.surfaceSolid}
+                />
+              }
+            />
+            <SettingsRow
               icon="volume-high"
-              title="Speak out loud"
+              title="Kofi speaks out loud"
               subtitle={
                 voice.enabled
-                  ? 'Kofi reads his lines aloud — mind the lecture hall'
+                  ? 'Reads his lines aloud — mind the lecture hall'
                   : 'Kofi stays silent'
               }
               trailing={
                 <Switch
                   value={voice.enabled}
-                  onValueChange={voice.setEnabled}
+                  onValueChange={(next) => {
+                    feel.tap();
+                    voice.setEnabled(next);
+                  }}
                   trackColor={{ false: colors.surfaceSunken, true: colors.accentVivid }}
                   thumbColor={colors.surfaceSolid}
                 />

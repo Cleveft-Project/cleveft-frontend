@@ -6,6 +6,8 @@ import Animated, {
   withSpring,
 } from 'react-native-reanimated';
 
+import { useHaptics } from '@/components/animated/haptics';
+
 /**
  * Tactile spring feedback for anything pressable.
  *
@@ -34,6 +36,7 @@ const DEFAULT_PRESSED_SCALE = 0.96;
  */
 export function usePressScale(pressedScale: number = DEFAULT_PRESSED_SCALE, enabled = true) {
   const scale = useSharedValue(1);
+  const haptics = useHaptics();
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
@@ -42,6 +45,11 @@ export function usePressScale(pressedScale: number = DEFAULT_PRESSED_SCALE, enab
   const handlers = {
     onPressIn: () => {
       if (enabled) {
+        // Every card, button and tile in the app springs through this hook, so
+        // the tap belongs here rather than at eight call sites. Anything that
+        // dips visually now answers physically too, which is the whole of what
+        // "micro-interaction" means on a phone.
+        haptics.tap();
         scale.value = withSpring(pressedScale, PRESS_SPRING);
       }
     },

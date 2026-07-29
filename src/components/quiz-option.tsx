@@ -6,6 +6,7 @@ import Animated, {
   withSpring,
 } from 'react-native-reanimated';
 
+import { useHaptics } from '@/components/animated/haptics';
 import { pop, shake, SNAPPY } from '@/components/animated/motion';
 import { radius, spacing, typography, useThemedStyles, type Palette } from '@/theme';
 
@@ -51,6 +52,7 @@ interface QuizOptionProps {
  */
 export function QuizOption({ label, text, state, onPress, disabled = false }: QuizOptionProps) {
   const styles = useThemedStyles(createStyles);
+  const haptics = useHaptics();
 
   const scale = useSharedValue(1);
   const shift = useSharedValue(0);
@@ -86,6 +88,10 @@ export function QuizOption({ label, text, state, onPress, disabled = false }: Qu
         disabled={disabled}
         onPressIn={() => {
           if (!disabled) {
+            // On press *in*, not on press — the tap should land with the finger
+            // rather than after the gesture resolves, or it feels like a
+            // delayed reaction rather than a response.
+            haptics.tap();
             scale.value = withSpring(0.975, SNAPPY);
           }
         }}

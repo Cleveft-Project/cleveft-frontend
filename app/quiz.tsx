@@ -4,6 +4,7 @@ import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { ApiError, examPrepApi, lecturesApi } from '@/api';
 import type { AttemptResult, Quiz } from '@/api/types';
+import { useHaptics } from '@/components/animated/haptics';
 import { CountUp } from '@/components/count-up';
 import { ErrorState, LoadingState, Pill } from '@/components/feedback';
 import { GlassCard } from '@/components/glass-card';
@@ -25,6 +26,7 @@ export default function QuizScreen() {
 
   // Content dissolves into the top and bottom edges as it scrolls.
   const edges = useScrollEdges();
+  const haptics = useHaptics();
   const params = useLocalSearchParams<{ quizId?: string }>();
   const quizId = typeof params.quizId === 'string' ? params.quizId : null;
 
@@ -90,7 +92,16 @@ export default function QuizScreen() {
         selectedIndex: answers[question.id] ?? null,
       }));
 
-      setResult(await examPrepApi.submitAttempt(data.id, payload));
+      const graded = await examPrepApi.submitAttempt(data.id, payload);
+      setResult(graded);
+
+      // Felt before it is read. The rhythm differs between passing and not, so
+      // a student knows how it went before the number finishes counting.
+      if (graded.percentage >= 60) {
+        haptics.success();
+      } else {
+        haptics.miss();
+      }
 
       // Take the student back to the top with the result.
       //
