@@ -30,6 +30,19 @@ interface FloatingPromptProps {
   /** The question itself, given the display type. */
   title: string;
   icon?: React.ComponentProps<typeof Ionicons>['name'];
+  /**
+   * Replaces the icon badge entirely — pass the mascot here rather than
+   * stacking him above, which just gives the screen two competing subjects.
+   */
+  subject?: React.ReactNode;
+  /**
+   * Peak-to-peak travel. The default is the small, measured hover that suits
+   * an icon; a mascot with beating wings wants considerably more, or the
+   * flapping looks unrelated to the movement.
+   */
+  travel?: number;
+  /** Raise when the subject is taller than the 64pt badge. */
+  stageHeight?: number;
 }
 
 /**
@@ -49,7 +62,14 @@ interface FloatingPromptProps {
  *    would make the reader chase a moving target, and the reference does not
  *    do it either.
  */
-export function FloatingPrompt({ eyebrow, title, icon = 'sparkles' }: FloatingPromptProps) {
+export function FloatingPrompt({
+  eyebrow,
+  title,
+  icon = 'sparkles',
+  subject,
+  travel = TRAVEL,
+  stageHeight = 96,
+}: FloatingPromptProps) {
   const { colors } = useTheme();
   const styles = useThemedStyles(createStyles);
 
@@ -72,7 +92,7 @@ export function FloatingPrompt({ eyebrow, title, icon = 'sparkles' }: FloatingPr
   }, [lift]);
 
   const floatStyle = useAnimatedStyle(() => ({
-    transform: [{ translateY: interpolate(lift.value, [0, 1], [TRAVEL, -TRAVEL]) }],
+    transform: [{ translateY: interpolate(lift.value, [0, 1], [travel, -travel]) }],
   }));
 
   const shadowStyle = useAnimatedStyle(() => ({
@@ -85,9 +105,9 @@ export function FloatingPrompt({ eyebrow, title, icon = 'sparkles' }: FloatingPr
 
   return (
     <View style={styles.wrap}>
-      <View style={styles.stage}>
-        <Animated.View style={[styles.badge, floatStyle]}>
-          <Ionicons name={icon} size={30} color={colors.accentVivid} />
+      <View style={[styles.stage, { height: stageHeight }]}>
+        <Animated.View style={[subject ? null : styles.badge, floatStyle]}>
+          {subject ?? <Ionicons name={icon} size={30} color={colors.accentVivid} />}
         </Animated.View>
         <Animated.View style={[styles.shadow, shadowStyle]} pointerEvents="none" />
       </View>
@@ -105,8 +125,8 @@ const createStyles = (c: Palette) =>
       paddingVertical: spacing.xxl,
     },
     // Fixed height so the float cannot push the copy below it up and down.
+    // Overridden per subject; the default suits the 64pt badge.
     stage: {
-      height: 96,
       alignItems: 'center',
       justifyContent: 'center',
     },

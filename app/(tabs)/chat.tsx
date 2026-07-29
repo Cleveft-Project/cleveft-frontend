@@ -1,5 +1,10 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useFocusEffect, useLocalSearchParams, useNavigation } from 'expo-router';
+import {
+  useFocusEffect,
+  useIsFocused,
+  useLocalSearchParams,
+  useNavigation,
+} from 'expo-router';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Alert,
@@ -19,6 +24,8 @@ import type { ChatMessage, Citation, ConversationSummary } from '@/api/types';
 import { usePressScale } from '@/components/animated/press-scale';
 import { ChatHistory } from '@/components/chat-history';
 import { FloatingPrompt } from '@/components/floating-prompt';
+import { Kofi } from '@/components/kofi';
+import { useKofiLine, useKofiSpeech } from '@/components/kofi-says';
 import { GlassCard } from '@/components/glass-card';
 import { Screen } from '@/components/screen';
 import { ThinkingDots } from '@/components/thinking-dots';
@@ -144,6 +151,24 @@ export default function ChatScreen() {
   const [conversations, setConversations] = useState<ConversationSummary[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [loadingThread, setLoadingThread] = useState(false);
+
+  // Fixed for the life of the screen, so the wait message does not reshuffle
+  // itself on every re-render while an answer is being fetched.
+  const thinkingLine = useKofiLine('chatThinking');
+  const emptyLine = useKofiLine('chatEmpty');
+
+  // Each only while it is genuinely the current moment: the invitation on an
+  // empty thread, and the "let me go back for it" while an answer is being
+  // fetched. Speaking both at once would talk over itself.
+  //
+  // Gated on focus rather than spoken once per run. The tab stays mounted, so
+  // without this the invitation would fire on the first visit and never again.
+  // It is not a greeting — it is a prompt for what to ask — so hearing it each
+  // time the student comes here to ask something is the point. Leaving the tab
+  // flips `isFocused` false, which also stops him mid-sentence.
+  const isFocused = useIsFocused();
+  useKofiSpeech(emptyLine, isFocused && messages.length === 0 && !thinking);
+  useKofiSpeech(thinkingLine, isFocused && thinking);
 
   const listRef = useRef<FlatList<ChatMessage>>(null);
   const historyPress = usePressScale(0.9);
@@ -418,9 +443,18 @@ export default function ChatScreen() {
           )}
           ListEmptyComponent={
             <View style={styles.emptyWrap}>
+              {/* Kofi *is* the floating subject here, not an addition above it.
+                  Stacking him over the old sparkles badge gave the screen two
+                  competing focal points and left the generic AI glyph doing the
+                  job the mascot exists for. He flies rather than hovers — wings
+                  beating, legs tucked, over a much longer arc than an icon
+                  wants — because an empty screen is the one place a mascot
+                  genuinely earns its keep. */}
               <FloatingPrompt
-                icon="sparkles"
-                eyebrow={lectureTitle ? `On ${lectureTitle}` : 'Grounded in your own lectures'}
+                subject={<Kofi mood="idle" size={116} flying grounded={false} />}
+                travel={26}
+                stageHeight={150}
+                eyebrow={lectureTitle ? `On ${lectureTitle}` : emptyLine}
                 title="What shall we revise?"
               />
 
@@ -444,8 +478,14 @@ export default function ChatScreen() {
                 layout={LinearTransition.springify()}
                 style={styles.thinking}
               >
+                {/* He rocks, squints and looks away while the answer is being
+                    retrieved — so the wait has a face on it rather than three
+                    dots. This is the longest pause in the app, and the one
+                    place his line does real work: "let me go back for it" is
+                    the product's whole promise, said by the thing doing it. */}
+                <Kofi mood="thinking" size={44} />
                 <ThinkingDots />
-                <Text style={styles.thinkingText}>Searching your lectures…</Text>
+                <Text style={styles.thinkingText}>{thinkingLine}</Text>
               </Animated.View>
             ) : null
           }
