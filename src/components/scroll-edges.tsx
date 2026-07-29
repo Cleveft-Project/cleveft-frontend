@@ -8,6 +8,7 @@ import Animated, {
 } from 'react-native-reanimated';
 
 import { EASE_OUT } from '@/components/animated/motion';
+import { useChrome } from '@/state/chrome-context';
 import { useTheme } from '@/theme';
 
 const AnimatedGradient = Animated.createAnimatedComponent(LinearGradient);
@@ -18,6 +19,10 @@ const FADE_HEIGHT = 56;
 const THRESHOLD = 8;
 /** Fades in and out rather than popping — the whole point is softness. */
 const DURATION = 200;
+/** Movement below this is finger jitter, not a decision to scroll. */
+const DIRECTION_THRESHOLD = 4;
+/** Near the top the bar is always present, whichever way the last flick went. */
+const COLLAPSE_AFTER = 24;
 
 /**
  * Content dissolving into the top and bottom edges of a scroll view.
@@ -45,13 +50,17 @@ export function useScrollEdges() {
   const topOpacity = useSharedValue(0);
   const bottomOpacity = useSharedValue(0);
 
+  const chrome = useChrome();
+  /** Last offset seen, for working out which way the finger went. */
+  const lastY = useSharedValue(0);
+
   const onScroll = useCallback(
     (event: NativeSyntheticEvent<NativeScrollEvent>) => {
       const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent;
+      const y = contentOffset.y;
 
-      const scrolledFromTop = contentOffset.y > THRESHOLD;
-      const remainingBelow =
-        contentSize.height - layoutMeasurement.height - contentOffset.y;
+      const scrolledFromTop = y > THRESHOLD;
+      const remainingBelow = contentSize.height - layoutMeasurement.height - y;
 
       topOpacity.value = withTiming(scrolledFromTop ? 1 : 0, {
         duration: DURATION,
@@ -61,8 +70,33 @@ export function useScrollEdges() {
         duration: DURATION,
         easing: EASE_OUT,
       });
+
+      /*
+       * Tab bar shrinks going down, returns coming up.
+       *
+       * Reading direction rather than absolute position, because position
+       * alone would leave the bar hidden while a student reads halfway down a
+       * long lecture — and they cannot get it back without scrolling to the
+       * top. Direction means one flick upward always returns it.
+       *
+       * DIRECTION_THRESHOLD ignores the pixel-level jitter a finger produces
+       * while holding still, which would otherwise make the bar twitch.
+       */
+      if (chrome) {
+        const delta = y - lastY.value;
+
+        if (y <= COLLAPSE_AFTER) {
+          chrome.collapse.value = withTiming(0, { duration: DURATION, easing: EASE_OUT });
+        } else if (delta > DIRECTION_THRESHOLD) {
+          chrome.collapse.value = withTiming(1, { duration: DURATION, easing: EASE_OUT });
+        } else if (delta < -DIRECTION_THRESHOLD) {
+          chrome.collapse.value = withTiming(0, { duration: DURATION, easing: EASE_OUT });
+        }
+
+        lastY.value = y;
+      }
     },
-    [bottomOpacity, topOpacity],
+    [bottomOpacity, chrome, lastY, topOpacity],
   );
 
   return { onScroll, topOpacity, bottomOpacity };

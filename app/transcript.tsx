@@ -13,6 +13,8 @@ import {
   View,
 } from 'react-native';
 
+import Animated from 'react-native-reanimated';
+
 import { ApiError, lecturesApi } from '@/api';
 import type { Lecture } from '@/api/types';
 import { Card } from '@/components/card';
@@ -28,6 +30,7 @@ import { LectureExamPrepTab } from '@/components/lecture-exam-prep';
 import { useAsync } from '@/hooks/use-async';
 import { coursesFromLectures } from '@/lib/courses';
 import { useLectureProgress } from '@/hooks/use-lecture-progress';
+import { useCollapsingHeader } from '@/state/chrome-context';
 import { radius, spacing, typography, useTheme, useThemedStyles, type Palette } from '@/theme';
 
 /** Named TranscriptTab, not View — `View` is already the RN component here. */
@@ -40,6 +43,9 @@ export default function TranscriptScreen() {
 
   // Content dissolves into the top and bottom edges as it scrolls.
   const edges = useScrollEdges();
+  const headerStyle = useCollapsingHeader();
+  // Interactive rows move but never scale, so their touch targets stay put.
+  const compactStyle = useCollapsingHeader({ scale: 0, fade: 0, lift: 12 });
   const params = useLocalSearchParams<{ lectureId?: string }>();
   const lectureId = typeof params.lectureId === 'string' ? params.lectureId : null;
 
@@ -388,7 +394,7 @@ export default function TranscriptScreen() {
           {/* The course this lecture belongs to, editable in place. A lecture
               sits inside a course, so the control for saying which one belongs
               on the lecture — not on a screen listing everything. */}
-          <View style={styles.courseRow}>
+          <Animated.View style={[styles.courseRow, compactStyle]}>
             {editingCourse ? (
               <View style={styles.coursePickerWrap}>
                 <CoursePicker
@@ -435,9 +441,12 @@ export default function TranscriptScreen() {
                 </Text>
               </Pressable>
             )}
-          </View>
+          </Animated.View>
 
-          <View style={styles.titleBlock}>
+          {/* Shrinks and lifts as the student reads, returning on the first
+              upward flick — the same signal that shrinks the tab bar, so the
+              chrome at both ends of the screen moves as one. */}
+          <Animated.View style={[styles.titleBlock, headerStyle]}>
             <Text style={styles.lectureTitle}>{data.title}</Text>
             <Text style={styles.lectureMeta}>
               {/* keyConcepts, not topics: `topics` is on LectureSummary, the
@@ -456,9 +465,13 @@ export default function TranscriptScreen() {
                 .filter(Boolean)
                 .join(' · ')}
             </Text>
-          </View>
+          </Animated.View>
 
-          <View style={styles.segmentWrap}>
+          {/* Lifted, never scaled. A scaled control keeps its original
+              hit-testing region in React Native, so its edges would quietly
+              stop responding while it looked smaller — the same trap the tab
+              bar avoids on press. Translation moves the touch target with it. */}
+          <Animated.View style={[styles.segmentWrap, compactStyle]}>
             <Segmented
               value={view}
               onChange={setView}
@@ -468,7 +481,7 @@ export default function TranscriptScreen() {
                 { value: 'examprep', label: 'Exam prep' },
               ]}
             />
-          </View>
+          </Animated.View>
         </>
       )}
 

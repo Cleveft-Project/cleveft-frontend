@@ -2,8 +2,11 @@ import { Ionicons } from '@expo/vector-icons';
 import { Tabs } from 'expo-router';
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import Animated, { useAnimatedStyle } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { useHaptics } from '@/components/animated/haptics';
+import { useChrome } from '@/state/chrome-context';
 import {
   radius,
   spacing,
@@ -84,10 +87,40 @@ function CleveftTabBar({ state, navigation }: TabBarProps) {
   const { colors, glow } = useTheme();
   const styles = useThemedStyles(createStyles);
   const insets = useSafeAreaInsets();
+  const chrome = useChrome();
+  const haptics = useHaptics();
+
+  /*
+   * Shrinks away as the student scrolls down, springs back the moment they
+   * scroll up.
+   *
+   * Transforms only — no height, no padding. A transform is composited on the
+   * UI thread and never re-lays-out the tree, which matters because this is
+   * animating *during* a scroll: touching layout here would make every list in
+   * the app stutter, which is precisely the cost that rules out a real blur.
+   *
+   * It shrinks and sinks rather than sliding fully off. The bar staying
+   * partly visible keeps the destinations glanceable, and means the student
+   * never has to wonder where navigation went.
+   */
+  const barStyle = useAnimatedStyle(() => {
+    if (!chrome) {
+      return {};
+    }
+    const c = chrome.collapse.value;
+    return {
+      transform: [{ translateY: c * 14 }, { scale: 1 - c * 0.12 }],
+      opacity: 1 - c * 0.25,
+    };
+  });
 
   return (
-    <View
-      style={[styles.barOuter, { paddingBottom: Math.max(insets.bottom, MIN_BOTTOM_GAP) }]}
+    <Animated.View
+      style={[
+        styles.barOuter,
+        { paddingBottom: Math.max(insets.bottom, MIN_BOTTOM_GAP) },
+        barStyle,
+      ]}
       pointerEvents="box-none"
     >
       <View style={[styles.bar, glow.accent]}>
@@ -100,6 +133,7 @@ function CleveftTabBar({ state, navigation }: TabBarProps) {
           const focused = state.index === index;
 
           const onPress = () => {
+            haptics.tap();
             // The navigator's own event, so anything listening for a tab press
             // — a scroll-to-top handler, say — still fires.
             const event = navigation.emit({
@@ -143,7 +177,7 @@ function CleveftTabBar({ state, navigation }: TabBarProps) {
           );
         })}
       </View>
-    </View>
+    </Animated.View>
   );
 }
 
@@ -152,20 +186,20 @@ export default function TabsLayout() {
 
   return (
     <Tabs
-      tabBar={(props) => <CleveftTabBar {...(props as unknown as TabBarProps)} />}
-      // Five tabs is cheap to keep mounted. Detaching and reattaching native
-      // screens (the default everywhere) makes a freshly reattached Android
-      // surface flash its default white background before themed content
-      // paints over it.
-      detachInactiveScreens={false}
-      screenOptions={{
-        headerShown: false,
-        sceneStyle: { backgroundColor: colors.bg },
-      }}
-    >
-      {TABS.map((tab) => (
-        <Tabs.Screen key={tab.name} name={tab.name} options={{ title: tab.title }} />
-      ))}
+        tabBar={(props) => <CleveftTabBar {...(props as unknown as TabBarProps)} />}
+        // Five tabs is cheap to keep mounted. Detaching and reattaching native
+        // screens (the default everywhere) makes a freshly reattached Android
+        // surface flash its default white background before themed content
+        // paints over it.
+        detachInactiveScreens={false}
+        screenOptions={{
+          headerShown: false,
+          sceneStyle: { backgroundColor: colors.bg },
+        }}
+      >
+        {TABS.map((tab) => (
+          <Tabs.Screen key={tab.name} name={tab.name} options={{ title: tab.title }} />
+        ))}
     </Tabs>
   );
 }
