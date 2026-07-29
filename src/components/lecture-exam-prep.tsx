@@ -8,7 +8,7 @@ import { ApiError, examPrepApi } from '@/api';
 import type { Quiz } from '@/api/types';
 import { Card } from '@/components/card';
 import { SectionHeader } from '@/components/headers';
-import { TopicBar } from '@/components/meters';
+import { GrowingFill, TopicBar } from '@/components/meters';
 import { NeonButton } from '@/components/neon-button';
 import { Pill } from '@/components/feedback';
 import { quizDateLabel } from '@/components/quiz-title';
@@ -17,6 +17,16 @@ import { radius, spacing, typography, useTheme, useThemedStyles, type Palette } 
 
 type Difficulty = 'EASY' | 'MEDIUM' | 'HARD';
 const DIFFICULTIES: Difficulty[] = ['EASY', 'MEDIUM', 'HARD'];
+
+/**
+ * 8 is the floor, not the only option.
+ *
+ * Fewer than eight is too small a sample to say anything useful about a topic —
+ * miss two and the score swings 25 points. Above that, longer quizzes are for
+ * a full pass before an exam, and 20 is roughly where a single sitting stops
+ * being one sitting.
+ */
+const QUESTION_COUNTS = [8, 12, 16, 20];
 
 interface LectureExamPrepProps {
   lectureId: string;
@@ -42,6 +52,12 @@ export function LectureExamPrepTab({ lectureId, lectureTitle, ready }: LectureEx
   const quizzes = useAsync(() => examPrepApi.listQuizzes(lectureId), [lectureId]);
 
   const [difficulty, setDifficulty] = useState<Difficulty>('MEDIUM');
+  /**
+   * 8 stays the default because it is a sensible single sitting, but it was
+   * hard-coded before, which meant a student revising one stubborn topic and a
+   * student doing a full pass before an exam got the identical quiz.
+   */
+  const [questionCount, setQuestionCount] = useState<number>(8);
   const [focusWeak, setFocusWeak] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -53,7 +69,7 @@ export function LectureExamPrepTab({ lectureId, lectureTitle, ready }: LectureEx
       const quiz = await examPrepApi.generateQuiz({
         lectureId,
         difficulty,
-        questionCount: 8,
+        questionCount,
         focusOnWeakAreas: focusWeak,
       });
       void quizzes.reload();
@@ -65,7 +81,7 @@ export function LectureExamPrepTab({ lectureId, lectureTitle, ready }: LectureEx
     } finally {
       setGenerating(false);
     }
-  }, [difficulty, focusWeak, lectureId, quizzes, router]);
+  }, [difficulty, focusWeak, lectureId, questionCount, quizzes, router]);
 
   if (!ready) {
     return (
@@ -103,9 +119,7 @@ export function LectureExamPrepTab({ lectureId, lectureTitle, ready }: LectureEx
 
             {data?.assessed ? (
               <View style={styles.track}>
-                <View
-                  style={[styles.fill, { width: `${Math.max(3, data.readinessPercent)}%` }]}
-                />
+                <GrowingFill percent={data.readinessPercent} style={styles.fill} />
               </View>
             ) : null}
 
@@ -132,6 +146,24 @@ export function LectureExamPrepTab({ lectureId, lectureTitle, ready }: LectureEx
             >
               <Text style={[styles.chipText, difficulty === option && styles.chipTextActive]}>
                 {option.charAt(0) + option.slice(1).toLowerCase()}
+              </Text>
+            </Pressable>
+          ))}
+        </View>
+
+        <Text style={styles.fieldLabel}>Questions</Text>
+        <View style={styles.chipRow}>
+          {QUESTION_COUNTS.map((option) => (
+            <Pressable
+              key={option}
+              onPress={() => setQuestionCount(option)}
+              style={[styles.chip, questionCount === option && styles.chipActive]}
+              accessibilityRole="radio"
+              accessibilityState={{ selected: questionCount === option }}
+              accessibilityLabel={`${option} questions`}
+            >
+              <Text style={[styles.chipText, questionCount === option && styles.chipTextActive]}>
+                {option}
               </Text>
             </Pressable>
           ))}
