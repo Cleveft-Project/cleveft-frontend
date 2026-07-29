@@ -160,10 +160,33 @@ export default function QuizScreen() {
 
             <CountUp value={result.percentage} suffix="%" style={styles.resultPercent} delay={220} />
 
+            {/* The point of this card, and the thing a generic quiz app
+                cannot tell you.
+
+                Every platform shows which *questions* you got right — that is
+                table stakes. This says which *parts of the lecture* you
+                understood: five questions came from keys, you got all five,
+                so keys is not what you need to revise tonight. The server only
+                claims this where at least two questions covered the topic, so
+                it is never a lucky guess being reported as understanding.
+
+                Not labelled "Mastered": the Exams screen uses that for a
+                cumulative score across every quiz, and this is one sitting. */}
+            {result.strongTopics?.length ? (
+              <View style={styles.topicBlock}>
+                <Text style={styles.topicLabel}>You understood</Text>
+                <View style={styles.topicTags}>
+                  {result.strongTopics.map((topic) => (
+                    <Pill key={topic} label={topic} tone="accent" />
+                  ))}
+                </View>
+              </View>
+            ) : null}
+
             {result.weakTopics.length > 0 ? (
-              <View style={styles.weakTopics}>
-                <Text style={styles.weakLabel}>Revisit these</Text>
-                <View style={styles.weakTags}>
+              <View style={styles.topicBlock}>
+                <Text style={styles.topicLabel}>Go back over</Text>
+                <View style={styles.topicTags}>
                   {result.weakTopics.map((topic) => (
                     <Pill key={topic} label={topic} tone="warning" />
                   ))}
@@ -283,7 +306,7 @@ const createStyles = (c: Palette) => StyleSheet.create({
     color: c.textSecondary,
     textAlign: 'center',
   },
-  weakTopics: {
+  topicBlock: {
     width: '100%',
     marginTop: spacing.lg,
     paddingTop: spacing.lg,
@@ -291,13 +314,13 @@ const createStyles = (c: Palette) => StyleSheet.create({
     borderTopColor: c.borderMuted,
     gap: spacing.md,
   },
-  weakLabel: {
+  topicLabel: {
     ...typography.micro,
     color: c.textMuted,
     letterSpacing: 0.5,
     textTransform: 'uppercase',
   },
-  weakTags: {
+  topicTags: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: spacing.sm,

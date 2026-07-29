@@ -214,7 +214,10 @@ export interface AttemptResult {
   totalQuestions: number;
   percentage: number;
   answers: GradedAnswer[];
+  /** Topics this attempt got at least one question wrong on. */
   weakTopics: string[];
+  /** Topics every question was answered correctly on. */
+  strongTopics: string[];
   completedAt: string;
 }
 
