@@ -1,6 +1,6 @@
 import { useFocusEffect, useRouter } from 'expo-router';
 import React, { useCallback, useState } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 
 import { ApiError, BASE_URL, authApi, lecturesApi } from '@/api';
 import { GlassCard } from '@/components/glass-card';
@@ -12,13 +12,15 @@ import { TextField } from '@/components/text-field';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { useAsync } from '@/hooks/use-async';
 import { useAuth } from '@/state/auth-context';
+import { useVoice } from '@/state/voice-context';
 import { radius, spacing, typography, useTheme, useThemedStyles, type Palette } from '@/theme';
 
 export default function SettingsScreen() {
   const styles = useThemedStyles(createStyles);
-  const { isDark } = useTheme();
+  const { isDark, colors } = useTheme();
   const router = useRouter();
   const { user, signOut, updateUser } = useAuth();
+  const voice = useVoice();
 
   const usage = useAsync(() => lecturesApi.usage(), []);
 
@@ -97,6 +99,32 @@ export default function SettingsScreen() {
             </View>
             <ThemeToggle />
           </View>
+        </GlassCard>
+
+        <SectionHeader title="Mascot" />
+        <GlassCard>
+          <Pressable
+            onPress={() => voice.setEnabled(!voice.enabled)}
+            style={styles.appearanceRow}
+            accessibilityRole="switch"
+            accessibilityState={{ checked: voice.enabled }}
+            accessibilityLabel="Read the mascot's lines aloud"
+          >
+            <View style={styles.appearanceText}>
+              <Text style={styles.appearanceTitle}>Speak out loud</Text>
+              <Text style={styles.appearanceCopy}>
+                {voice.enabled
+                  ? 'Kofi reads his lines aloud. Mind the lecture hall.'
+                  : 'Kofi stays silent. Turn this on and he will speak.'}
+              </Text>
+            </View>
+            <Switch
+              value={voice.enabled}
+              onValueChange={voice.setEnabled}
+              trackColor={{ false: colors.surfaceSunken, true: colors.accentVivid }}
+              thumbColor={colors.surfaceSolid}
+            />
+          </Pressable>
         </GlassCard>
 
         <SectionHeader title="Plan" />

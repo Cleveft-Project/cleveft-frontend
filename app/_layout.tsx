@@ -10,6 +10,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { LoadingState } from '@/components/feedback';
 import { SplashOverlay } from '@/components/splash-overlay';
 import { AuthProvider, useAuth } from '@/state/auth-context';
+import { VoiceProvider } from '@/state/voice-context';
 import { ThemeProvider, useTheme, useThemedStyles, type Palette } from '@/theme';
 
 /**
@@ -138,7 +139,9 @@ function ThemedRoot() {
     <GestureHandlerRootView style={styles.root}>
       <SafeAreaProvider>
         <AuthProvider>
-          <RootShell />
+          <VoiceProvider>
+            <RootShell />
+          </VoiceProvider>
         </AuthProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
