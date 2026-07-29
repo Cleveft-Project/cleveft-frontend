@@ -4,7 +4,7 @@ import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-nati
 import Animated, { FadeIn, LinearTransition } from 'react-native-reanimated';
 
 import type { CourseReadiness, LectureReadiness } from '@/api/types';
-import { TopicBar } from '@/components/meters';
+import { GrowingFill, TopicBar } from '@/components/meters';
 import { radius, spacing, typography, useTheme, useThemedStyles, type Palette } from '@/theme';
 
 interface CourseReadinessCardProps {
@@ -117,12 +117,9 @@ export function CourseReadinessCard({
 
         {scoreable ? (
           <View style={styles.track}>
-            <View
-              style={[
-                styles.fill,
-                styles[`${tone}Fill`],
-                { width: `${course.assessed ? Math.max(3, course.readinessPercent) : 0}%` },
-              ]}
+            <GrowingFill
+              percent={course.assessed ? course.readinessPercent : 0}
+              style={[styles.fill, styles[`${tone}Fill`]]}
             />
           </View>
         ) : null}
@@ -240,12 +237,9 @@ function LectureRow({
         </Text>
         {lecture.assessed ? (
           <View style={styles.lectureTrack}>
-            <View
-              style={[
-                styles.lectureFill,
-                styles[`${tone}Fill`],
-                { width: `${Math.max(4, lecture.readinessPercent)}%` },
-              ]}
+            <GrowingFill
+              percent={lecture.readinessPercent}
+              style={[styles.lectureFill, styles[`${tone}Fill`]]}
             />
           </View>
         ) : (
