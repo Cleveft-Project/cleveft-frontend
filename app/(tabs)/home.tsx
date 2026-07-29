@@ -25,6 +25,8 @@ import { chatApi, examPrepApi, lecturesApi } from '@/api';
 import { Animated, staggeredEntrance } from '@/components/animated/entrance';
 import { Card } from '@/components/card';
 import { EmptyState, ErrorState, LoadingState } from '@/components/feedback';
+import { Kofi, type KofiMood } from '@/components/kofi';
+import { useKofiLine, useKofiSpeech, type KofiOccasion } from '@/components/kofi-says';
 import { SectionHeader } from '@/components/headers';
 import { LectureCard } from '@/components/lecture-card';
 import { StatTile } from '@/components/meters';
@@ -199,6 +201,26 @@ export default function HomeScreen() {
     [attempts.data, conversations.data, lectures.data],
   );
 
+  /**
+   * What Kofi makes of the state of things, and what he says about it.
+   *
+   * Driven by the streak rather than the time of day: a mascot that is
+   * uniformly delighted has no opinions, and the one thing worth having an
+   * opinion about on this screen is whether today has been earned yet.
+   */
+  const welcomeOccasion: KofiOccasion = streak.atRisk
+    ? 'homeStreakAtRisk'
+    : streak.current > 0
+      ? 'homeStreakAlive'
+      : 'homeFirstTime';
+
+  const welcomeLine = useKofiLine(welcomeOccasion);
+  // Once per app run. A greeting belongs to arriving, not to every return to
+  // this tab — being welcomed again on each switch is the fastest way to make
+  // a student turn speech straight back off.
+  useKofiSpeech(welcomeLine, true, 'welcome');
+  const welcomeMood: KofiMood = welcomeOccasion === 'homeStreakAtRisk' ? 'encourage' : 'idle';
+
   const refreshing = lectures.isRefreshing || stats.isRefreshing || readiness.isRefreshing;
 
   const reloadAll = useCallback(() => {
@@ -268,6 +290,10 @@ export default function HomeScreen() {
             tell the student their own name. The display size now goes to the
             hero below, which is the thing they came here to do. */}
         <View style={styles.header}>
+          {/* Kofi in place of the initial. He is the first thing on the screen
+              and the first thing that moves, which is the whole point of a
+              mascot: something is pleased you came back. Still the route into
+              settings, so he costs no tap target. */}
           <View style={styles.avatarWrap}>
             <Animated.View pointerEvents="none" style={[styles.avatarRing, ringStyle]} />
             <Pressable
@@ -277,9 +303,7 @@ export default function HomeScreen() {
               accessibilityRole="button"
               accessibilityLabel="Open settings"
             >
-              <Text style={styles.avatarText}>
-                {(user?.fullName?.trim()?.[0] ?? 'C').toUpperCase()}
-              </Text>
+              <Kofi mood={welcomeMood} size={54} grounded={false} />
             </Pressable>
           </View>
 
@@ -292,7 +316,10 @@ export default function HomeScreen() {
                 {greeting()}, {user?.fullName?.split(' ')[0] ?? 'Student'}
               </Text>
             </View>
-            <Text style={styles.greeting}>
+            <Text style={styles.greeting} numberOfLines={1}>
+              {welcomeLine}
+            </Text>
+            <Text style={styles.greetingDate}>
               {new Date().toLocaleDateString(undefined, {
                 weekday: 'short',
                 day: 'numeric',
@@ -442,6 +469,10 @@ const createStyles = (c: Palette) => StyleSheet.create({
   greeting: {
     ...typography.micro,
     fontWeight: '500',
+    color: c.accent,
+  },
+  greetingDate: {
+    ...typography.micro,
     color: c.textMuted,
   },
   name: {
@@ -483,10 +514,6 @@ const createStyles = (c: Palette) => StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: c.ink,
-  },
-  avatarText: {
-    ...typography.subheading,
-    color: c.accentVivid,
   },
   headerAction: {
     width: 38,
