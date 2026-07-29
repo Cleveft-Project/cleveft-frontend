@@ -1,5 +1,5 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { ApiError, examPrepApi, lecturesApi } from '@/api';
@@ -11,7 +11,7 @@ import { ScreenHeader } from '@/components/headers';
 import { NeonButton } from '@/components/neon-button';
 import { QuizOption, type QuizOptionState } from '@/components/quiz-option';
 import { quizDisplayTitle } from '@/components/quiz-title';
-import { Sankofa, type SankofaMood } from '@/components/sankofa';
+import { KofiSays, type KofiOccasion } from '@/components/kofi-says';
 import { Screen } from '@/components/screen';
 import { useAsync } from '@/hooks/use-async';
 import { radius, spacing, typography, useThemedStyles, type Palette } from '@/theme';
@@ -36,6 +36,8 @@ export default function QuizScreen() {
     enabled: !!lectureId,
   });
 
+  const scrollRef = useRef<ScrollView>(null);
+
   const [answers, setAnswers] = useState<Record<string, number>>({});
   const [result, setResult] = useState<AttemptResult | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -54,18 +56,20 @@ export default function QuizScreen() {
   }, [result]);
 
   /**
-   * How the mascot takes the result.
+   * How Kofi takes the result.
    *
    * The threshold for celebrating is deliberately generous. A bird that only
    * cheers at 100% teaches the student that anything less is failure, which is
    * the opposite of what a revision tool should do — and 60% on a first pass
-   * through a hard lecture is genuinely worth encouraging.
+   * through a hard lecture is genuinely worth encouraging. Three bands rather
+   * than two, so a 62% and a 96% are not congratulated in identical words.
    */
-  const resultMood: SankofaMood = !result
-    ? 'idle'
-    : result.percentage >= 60
-      ? 'celebrate'
-      : 'encourage';
+  const occasion: KofiOccasion =
+    !result || result.percentage < 60
+      ? 'quizWeak'
+      : result.percentage >= 80
+        ? 'quizStrong'
+        : 'quizDecent';
 
   const submit = async () => {
     if (!data) {
@@ -83,6 +87,17 @@ export default function QuizScreen() {
       }));
 
       setResult(await examPrepApi.submitAttempt(data.id, payload));
+
+      // Take the student back to the top with the result.
+      //
+      // Submitting happens from the *bottom* of the quiz — that is where the
+      // button is, after eight questions of scrolling — while the score, the
+      // verdict and Kofi's reaction all render at the top. Without this the
+      // entire reward for finishing is off-screen, and the only feedback is
+      // the options quietly changing colour around you.
+      requestAnimationFrame(() => {
+        scrollRef.current?.scrollTo({ y: 0, animated: true });
+      });
     } catch (error) {
       setSubmitError(
         error instanceof ApiError ? error.message : 'Could not submit your answers.',
@@ -130,20 +145,20 @@ export default function QuizScreen() {
         }
       />
 
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        ref={scrollRef}
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+      >
         {result ? (
           <GlassCard active style={styles.resultCard}>
-            {/* The bird reacts before the number finishes climbing, so the
-                student knows how they did from its posture alone. */}
-            <Sankofa mood={resultMood} size={104} />
+            {/* The whole moment, in order: Kofi reacts, particles fly on a
+                real win, the number climbs, then he says something about it.
+                Reaction first and words second — the reverse makes the line
+                feel pre-recorded. */}
+            <KofiSays occasion={occasion} size={132} burst={result.percentage >= 60} />
+
             <CountUp value={result.percentage} suffix="%" style={styles.resultPercent} delay={220} />
-            <Text style={styles.resultCopy}>
-              {result.percentage >= 80
-                ? 'Strong pass. This topic is holding up.'
-                : result.percentage >= 60
-                  ? 'Decent, but there are gaps worth closing.'
-                  : 'Worth another pass through this lecture.'}
-            </Text>
 
             {result.weakTopics.length > 0 ? (
               <View style={styles.weakTopics}>
