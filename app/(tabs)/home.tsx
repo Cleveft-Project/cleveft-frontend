@@ -297,11 +297,11 @@ export default function HomeScreen() {
           <View style={styles.avatarWrap}>
             <Animated.View pointerEvents="none" style={[styles.avatarRing, ringStyle]} />
             <Pressable
-              onPress={() => router.push('/settings')}
+              onPress={() => router.push('/profile')}
               hitSlop={10}
               style={styles.avatar}
               accessibilityRole="button"
-              accessibilityLabel="Open settings"
+              accessibilityLabel="Open your profile"
             >
               <Kofi mood={welcomeMood} size={54} grounded={false} />
             </Pressable>

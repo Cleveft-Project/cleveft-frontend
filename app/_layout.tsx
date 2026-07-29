@@ -115,6 +115,7 @@ function RootShell() {
           <Stack.Screen name="(tabs)" />
           <Stack.Screen name="transcript" options={{ animation: 'slide_from_right' }} />
           <Stack.Screen name="quiz" options={{ animation: 'slide_from_bottom' }} />
+          <Stack.Screen name="profile" options={{ animation: 'slide_from_right' }} />
           <Stack.Screen name="settings" options={{ animation: 'slide_from_right' }} />
           <Stack.Screen name="upgrade" options={{ animation: 'slide_from_bottom' }} />
         </Stack>

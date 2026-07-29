@@ -1,192 +1,118 @@
-import { useFocusEffect, useRouter } from 'expo-router';
-import React, { useCallback, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
+import { useRouter } from 'expo-router';
+import React from 'react';
+import { ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 
-import { ApiError, BASE_URL, authApi, lecturesApi } from '@/api';
-import { GlassCard } from '@/components/glass-card';
+import { BASE_URL } from '@/api';
+import { Animated, staggeredEntrance } from '@/components/animated/entrance';
 import { ScreenHeader, SectionHeader } from '@/components/headers';
-import { NeonButton } from '@/components/neon-button';
-import { PlanCard } from '@/components/plan-card';
 import { Screen } from '@/components/screen';
-import { TextField } from '@/components/text-field';
+import { SettingsGroup, SettingsRow } from '@/components/settings-row';
 import { ThemeToggle } from '@/components/theme-toggle';
-import { useAsync } from '@/hooks/use-async';
-import { useAuth } from '@/state/auth-context';
 import { useVoice } from '@/state/voice-context';
-import { radius, spacing, typography, useTheme, useThemedStyles, type Palette } from '@/theme';
+import { spacing, typography, useTheme, useThemedStyles, type Palette } from '@/theme';
 
+/**
+ * How the app behaves — and nothing about who the student is.
+ *
+ * The counterpart to the profile screen. Everything here is a preference or a
+ * diagnostic: what it looks like, whether the mascot speaks, which machine it
+ * is talking to. None of it belongs in front of someone who opened their
+ * profile to correct their name.
+ */
 export default function SettingsScreen() {
   const styles = useThemedStyles(createStyles);
   const { isDark, colors } = useTheme();
   const router = useRouter();
-  const { user, signOut, updateUser } = useAuth();
   const voice = useVoice();
-
-  const usage = useAsync(() => lecturesApi.usage(), []);
-
-  // Coming back from the upgrade screen changes both the tier and what the
-  // usage bar should say, so the card re-reads rather than showing the figures
-  // the student saw before they paid.
-  useFocusEffect(
-    useCallback(() => {
-      void usage.reload();
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []),
-  );
-
-  const [fullName, setFullName] = useState(user?.fullName ?? '');
-  const [university, setUniversity] = useState(user?.university ?? '');
-  const [programme, setProgramme] = useState(user?.programme ?? '');
-
-  const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const save = async () => {
-    setSaving(true);
-    setSaved(false);
-    setError(null);
-    try {
-      const updated = await authApi.updateProfile({
-        fullName: fullName.trim(),
-        university: university.trim(),
-        programme: programme.trim(),
-      });
-      updateUser(updated);
-      setSaved(true);
-    } catch (caught) {
-      setError(caught instanceof ApiError ? caught.message : 'Could not save your profile.');
-    } finally {
-      setSaving(false);
-    }
-  };
 
   return (
     <Screen edges={['top', 'bottom']}>
-      <ScreenHeader title="Your profile" subtitle={user?.email} />
+      <ScreenHeader title="Settings" />
 
-      <ScrollView
-        contentContainerStyle={styles.content}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
-      >
-        <GlassCard style={styles.identityCard}>
-          <View style={styles.avatar}>
-            <Text style={styles.avatarText}>
-              {(user?.fullName?.trim()?.[0] ?? 'C').toUpperCase()}
-            </Text>
-          </View>
-          <View style={styles.identityText}>
-            <Text style={styles.identityName} numberOfLines={1}>
-              {user?.fullName}
-            </Text>
-            <Text style={styles.identityEmail} numberOfLines={1}>
-              {user?.email}
-            </Text>
-          </View>
-        </GlassCard>
-
-        <SectionHeader title="Appearance" />
-        <GlassCard>
-          <View style={styles.appearanceRow}>
-            <View style={styles.appearanceText}>
-              <Text style={styles.appearanceTitle}>{isDark ? 'Dark' : 'Light'}</Text>
-              <Text style={styles.appearanceCopy}>
-                {isDark
-                  ? 'Easier on the eyes in a dim lecture hall.'
-                  : 'Better in daylight and for long reading sessions.'}
-              </Text>
-            </View>
-            <ThemeToggle />
-          </View>
-        </GlassCard>
-
-        <SectionHeader title="Mascot" />
-        <GlassCard>
-          <Pressable
-            onPress={() => voice.setEnabled(!voice.enabled)}
-            style={styles.appearanceRow}
-            accessibilityRole="switch"
-            accessibilityState={{ checked: voice.enabled }}
-            accessibilityLabel="Read the mascot's lines aloud"
-          >
-            <View style={styles.appearanceText}>
-              <Text style={styles.appearanceTitle}>Speak out loud</Text>
-              <Text style={styles.appearanceCopy}>
-                {voice.enabled
-                  ? 'Kofi reads his lines aloud. Mind the lecture hall.'
-                  : 'Kofi stays silent. Turn this on and he will speak.'}
-              </Text>
-            </View>
-            <Switch
-              value={voice.enabled}
-              onValueChange={voice.setEnabled}
-              trackColor={{ false: colors.surfaceSunken, true: colors.accentVivid }}
-              thumbColor={colors.surfaceSolid}
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        <Animated.View entering={staggeredEntrance(0)}>
+          <SectionHeader title="Appearance" />
+          <SettingsGroup>
+            <SettingsRow
+              first
+              icon={isDark ? 'moon' : 'sunny'}
+              tone={isDark ? 'violet' : 'warning'}
+              title={isDark ? 'Dark' : 'Light'}
+              subtitle={
+                isDark
+                  ? 'Easier on the eyes in a dim lecture hall'
+                  : 'Better in daylight and for long reading'
+              }
+              trailing={<ThemeToggle />}
             />
-          </Pressable>
-        </GlassCard>
+          </SettingsGroup>
+        </Animated.View>
 
-        <SectionHeader title="Plan" />
-        <PlanCard
-          plan={user?.plan ?? 'FREE'}
-          usage={usage.data}
-          onUpgrade={() => router.push('/upgrade')}
-          onManage={() => router.push('/upgrade')}
-        />
-
-        <SectionHeader title="Details" />
-        <GlassCard>
-          <View style={styles.form}>
-            <TextField
-              label="FULL NAME"
-              value={fullName}
-              onChangeText={setFullName}
-              autoCapitalize="words"
+        <Animated.View entering={staggeredEntrance(1)}>
+          <SectionHeader title="Mascot" />
+          <SettingsGroup>
+            <SettingsRow
+              first
+              icon="volume-high"
+              title="Speak out loud"
+              subtitle={
+                voice.enabled
+                  ? 'Kofi reads his lines aloud — mind the lecture hall'
+                  : 'Kofi stays silent'
+              }
+              trailing={
+                <Switch
+                  value={voice.enabled}
+                  onValueChange={voice.setEnabled}
+                  trackColor={{ false: colors.surfaceSunken, true: colors.accentVivid }}
+                  thumbColor={colors.surfaceSolid}
+                />
+              }
             />
-            <TextField
-              label="UNIVERSITY"
-              value={university}
-              onChangeText={setUniversity}
-              placeholder="Add your university"
-              autoCapitalize="words"
+          </SettingsGroup>
+        </Animated.View>
+
+        <Animated.View entering={staggeredEntrance(2)}>
+          <SectionHeader title="Account" />
+          <SettingsGroup>
+            <SettingsRow
+              first
+              icon="person-circle"
+              title="Your profile"
+              subtitle="Name, university and programme"
+              onPress={() => router.push('/profile')}
             />
-            <TextField
-              label="PROGRAMME"
-              value={programme}
-              onChangeText={setProgramme}
-              placeholder="Add your programme"
-              autoCapitalize="words"
+            <SettingsRow
+              icon="sparkles"
+              tone="violet"
+              title="Plan"
+              subtitle="Recording limits and upgrades"
+              onPress={() => router.push('/upgrade')}
             />
-          </View>
+          </SettingsGroup>
+        </Animated.View>
 
-          {error ? <Text style={styles.error}>{error}</Text> : null}
-          {saved ? <Text style={styles.saved}>Profile updated.</Text> : null}
-
-          <NeonButton
-            label="Save changes"
-            onPress={save}
-            loading={saving}
-            style={styles.saveButton}
-          />
-        </GlassCard>
-
-        <SectionHeader title="Connection" />
-        <GlassCard>
-          <Text style={styles.metaLabel}>GATEWAY</Text>
-          <Text style={styles.metaValue}>{BASE_URL}</Text>
-          <Text style={styles.metaHint}>
+        <Animated.View entering={staggeredEntrance(3)}>
+          <SectionHeader title="Connection" />
+          <SettingsGroup>
+            <SettingsRow
+              first
+              icon="server"
+              tone="accent"
+              title="Gateway"
+              subtitle={BASE_URL}
+            />
+          </SettingsGroup>
+          <Text style={styles.hint}>
             Set EXPO_PUBLIC_GATEWAY_URL in .env to point the app at a different machine. On a
             physical device this must be your computer&apos;s LAN address, not localhost.
           </Text>
-        </GlassCard>
+        </Animated.View>
 
-        <NeonButton
-          label="Sign out"
-          onPress={signOut}
-          variant="danger"
-          style={styles.signOut}
-        />
+        <View style={styles.footer}>
+          <Text style={styles.footerText}>Cleveft</Text>
+          <Text style={styles.footerHint}>Go back and get what you forgot.</Text>
+        </View>
       </ScrollView>
     </Screen>
   );
@@ -197,86 +123,26 @@ const createStyles = (c: Palette) => StyleSheet.create({
     paddingHorizontal: spacing.xl,
     paddingBottom: spacing.xxxl,
   },
-  identityCard: {
-    flexDirection: 'row',
+  hint: {
+    ...typography.micro,
+    color: c.textMuted,
+    marginTop: spacing.md,
+    paddingHorizontal: spacing.xs,
+  },
+  footer: {
     alignItems: 'center',
-    gap: spacing.lg,
-  },
-  avatar: {
-    width: 56,
-    height: 56,
-    borderRadius: radius.pill,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: c.accentSoft,
-    borderWidth: StyleSheet.hairlineWidth * 2,
-    borderColor: c.borderStrong,
-  },
-  avatarText: {
-    ...typography.title,
-    color: c.accent,
-  },
-  identityText: {
-    flex: 1,
+    marginTop: spacing.xxxl,
     gap: 2,
   },
-  identityName: {
-    ...typography.heading,
-    color: c.text,
-  },
-  identityEmail: {
+  footerText: {
     ...typography.caption,
     color: c.textMuted,
   },
-  form: {
-    gap: spacing.lg,
-  },
-  error: {
-    ...typography.caption,
-    color: c.danger,
-    marginTop: spacing.md,
-  },
-  saved: {
-    ...typography.caption,
-    color: c.accent,
-    marginTop: spacing.md,
-  },
-  saveButton: {
-    marginTop: spacing.xl,
-  },
-  metaLabel: {
-    ...typography.micro,
-    color: c.textSecondary,
-    letterSpacing: 0.5,
-  },
-  metaValue: {
-    ...typography.body,
-    color: c.text,
-    marginTop: spacing.xs,
-  },
-  metaHint: {
+  // The Sankofa translation, quietly, at the bottom of the least-visited
+  // screen — the kind of detail people find rather than are shown.
+  footerHint: {
     ...typography.micro,
     color: c.textMuted,
-    marginTop: spacing.md,
-  },
-  appearanceRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.lg,
-  },
-  appearanceText: {
-    flex: 1,
-    gap: 2,
-  },
-  appearanceTitle: {
-    ...typography.bodyStrong,
-    color: c.text,
-  },
-  appearanceCopy: {
-    ...typography.micro,
-    color: c.textMuted,
-  },
-  signOut: {
-    marginTop: spacing.xxl,
+    opacity: 0.7,
   },
 });
