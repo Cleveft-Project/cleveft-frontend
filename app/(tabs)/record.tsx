@@ -38,7 +38,6 @@ import { SectionHeader } from '@/components/headers';
 import { LectureCard } from '@/components/lecture-card';
 import { CoursePicker } from '@/components/course-picker';
 import { RecordControl, type RecorderPhase } from '@/components/record-control';
-import { Sankofa, type SankofaMood } from '@/components/sankofa';
 import { Screen } from '@/components/screen';
 import { TextField } from '@/components/text-field';
 import { Waveform, normaliseMetering } from '@/components/waveform';
@@ -415,17 +414,6 @@ export default function RecordScreen() {
         ? 'recording'
         : 'idle';
 
-  /**
-   * The mascot mirrors the recorder, which is the whole point of putting it
-   * here: `listening` turns its head fully back — the Sankofa pose — while
-   * audio is being captured, and `thinking` runs during the upload.
-   */
-  const mascotMood: SankofaMood = uploading
-    ? 'thinking'
-    : isRecording
-      ? 'listening'
-      : 'idle';
-
   const allLectures = lectures.data ?? [];
 
   return (
@@ -444,18 +432,20 @@ export default function RecordScreen() {
           />
         }
       >
-        {/* The bird beside the title, doing the thing the symbol is about:
-            listening to what is being said so it can be retrieved later. Its
-            posture is the fastest read on this screen of whether tape is
-            actually rolling. */}
+        {/* No mascot here, deliberately.
+            He was tried on this screen twice: first as a listening pose, then
+            driven by the live microphone level. Both failed for the same
+            reason. Every question this screen answers — is it running, for how
+            long, is it hearing me — is already answered better by the status
+            chip, the timer and the waveform directly beneath. A character
+            restating the waveform is decoration, and decoration on a utility
+            screen is noise. He belongs where there is waiting or feeling to
+            carry: the empty chat, the pause before an answer, a quiz result. */}
         <View style={styles.header}>
-          <Sankofa mood={mascotMood} size={72} style={styles.headerMascot} />
-          <View style={styles.headerText}>
-            <Text style={styles.title}>Record</Text>
-            <Text style={styles.subtitle}>
-              {isRecording ? 'Listening to your lecture' : 'One tap and Cleveft handles the rest'}
-            </Text>
-          </View>
+          <Text style={styles.title}>Record</Text>
+          <Text style={styles.subtitle}>
+            {isRecording ? 'Listening to your lecture' : 'One tap and Cleveft handles the rest'}
+          </Text>
         </View>
 
         {/* An ink slab, like the home hero, rather than another white card.
@@ -629,20 +619,9 @@ const createStyles = (c: Palette) => StyleSheet.create({
     paddingBottom: spacing.xxxl,
   },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
     paddingTop: spacing.md,
     paddingBottom: spacing.xl,
-    gap: spacing.sm,
-  },
-  headerText: {
-    flex: 1,
     gap: spacing.xs,
-  },
-  headerMascot: {
-    // Pulled in slightly: the art has built-in breathing room inside its box,
-    // so aligning the box edge leaves the bird looking adrift from the title.
-    marginLeft: -spacing.sm,
   },
   title: {
     ...typography.display,
