@@ -10,6 +10,7 @@ import { GlassCard } from '@/components/glass-card';
 import { RoundButton, ScreenHeader, SectionHeader } from '@/components/headers';
 import { Kofi } from '@/components/kofi';
 import { NeonButton } from '@/components/neon-button';
+import { ScrollEdges, useScrollEdges } from '@/components/scroll-edges';
 import { Screen } from '@/components/screen';
 import { TextField } from '@/components/text-field';
 import { useAsync } from '@/hooks/use-async';
@@ -33,6 +34,9 @@ export default function ProfileScreen() {
   const styles = useThemedStyles(createStyles);
   const { colors } = useTheme();
   const router = useRouter();
+
+  // Content dissolves into the top and bottom edges as it scrolls.
+  const edges = useScrollEdges();
   const { user, signOut, updateUser } = useAuth();
 
   const usage = useAsync(() => lecturesApi.usage(), []);
@@ -97,6 +101,8 @@ export default function ProfileScreen() {
       />
 
       <ScrollView
+        onScroll={edges.onScroll}
+        scrollEventThrottle={16}
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
@@ -205,6 +211,9 @@ export default function ProfileScreen() {
           <NeonButton label="Sign out" onPress={signOut} variant="danger" style={styles.signOut} />
         </Animated.View>
       </ScrollView>
+
+      {/* After the scroll view, so the fades paint over the content. */}
+      <ScrollEdges {...edges} />
     </Screen>
   );
 }

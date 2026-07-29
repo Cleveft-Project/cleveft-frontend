@@ -8,6 +8,7 @@ import { Animated, staggeredEntrance } from '@/components/animated/entrance';
 import { CourseReadinessCard } from '@/components/course-readiness-card';
 import { EmptyState, ErrorState, LoadingState } from '@/components/feedback';
 import { SectionHeader } from '@/components/headers';
+import { ScrollEdges, useScrollEdges } from '@/components/scroll-edges';
 import { Screen } from '@/components/screen';
 import { useAsync } from '@/hooks/use-async';
 import { spacing, typography, useTheme, useThemedStyles, type Palette } from '@/theme';
@@ -32,6 +33,9 @@ export default function ExamPrepScreen() {
   // Tapping the tab you are already on returns you to the top of it.
   const scrollRef = useRef<ScrollView>(null);
   useScrollToTop(scrollRef);
+
+  // Content dissolves into the top and bottom edges as it scrolls.
+  const edges = useScrollEdges();
 
   const readiness = useAsync(() => examPrepApi.readiness(), []);
   const [quizzingCourse, setQuizzingCourse] = useState<string | null>(null);
@@ -88,6 +92,8 @@ export default function ExamPrepScreen() {
     <Screen>
       <ScrollView
         ref={scrollRef}
+        onScroll={edges.onScroll}
+        scrollEventThrottle={16}
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
         refreshControl={
@@ -146,6 +152,9 @@ export default function ExamPrepScreen() {
           </>
         )}
       </ScrollView>
+
+      {/* After the scroll view, so the fades paint over the content. */}
+      <ScrollEdges {...edges} />
     </Screen>
   );
 }

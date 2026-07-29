@@ -31,6 +31,7 @@ import { SectionHeader } from '@/components/headers';
 import { LectureCard } from '@/components/lecture-card';
 import { StatTile } from '@/components/meters';
 import { RecordHero } from '@/components/record-hero';
+import { ScrollEdges, useScrollEdges } from '@/components/scroll-edges';
 import { Screen } from '@/components/screen';
 import { StreakCard } from '@/components/streak-card';
 import { useAsync } from '@/hooks/use-async';
@@ -73,6 +74,9 @@ export default function HomeScreen() {
   // emits `tabPress`; this is what listens for it.
   const scrollRef = useRef<ScrollView>(null);
   useScrollToTop(scrollRef);
+
+  // Content dissolves into the top and bottom edges as it scrolls.
+  const edges = useScrollEdges();
 
   /*
    * The greeting flourish: a ring pulsing out from behind the avatar, the
@@ -274,6 +278,8 @@ export default function HomeScreen() {
     <Screen>
       <ScrollView
         ref={scrollRef}
+        onScroll={edges.onScroll}
+        scrollEventThrottle={16}
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
         refreshControl={
@@ -441,6 +447,9 @@ export default function HomeScreen() {
           </View>
         )}
       </ScrollView>
+
+      {/* After the scroll view, so the fades paint over the content. */}
+      <ScrollEdges {...edges} />
     </Screen>
   );
 }

@@ -12,6 +12,7 @@ import { NeonButton } from '@/components/neon-button';
 import { QuizOption, type QuizOptionState } from '@/components/quiz-option';
 import { quizDisplayTitle } from '@/components/quiz-title';
 import { KofiSays, type KofiOccasion } from '@/components/kofi-says';
+import { ScrollEdges, useScrollEdges } from '@/components/scroll-edges';
 import { Screen } from '@/components/screen';
 import { useAsync } from '@/hooks/use-async';
 import { radius, spacing, typography, useThemedStyles, type Palette } from '@/theme';
@@ -21,6 +22,9 @@ const OPTION_LABELS = ['A', 'B', 'C', 'D', 'E', 'F'];
 export default function QuizScreen() {
   const styles = useThemedStyles(createStyles);
   const router = useRouter();
+
+  // Content dissolves into the top and bottom edges as it scrolls.
+  const edges = useScrollEdges();
   const params = useLocalSearchParams<{ quizId?: string }>();
   const quizId = typeof params.quizId === 'string' ? params.quizId : null;
 
@@ -146,6 +150,8 @@ export default function QuizScreen() {
       />
 
       <ScrollView
+        onScroll={edges.onScroll}
+        scrollEventThrottle={16}
         ref={scrollRef}
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
@@ -281,6 +287,9 @@ export default function QuizScreen() {
           />
         )}
       </ScrollView>
+
+      {/* After the scroll view, so the fades paint over the content. */}
+      <ScrollEdges {...edges} />
     </Screen>
   );
 }

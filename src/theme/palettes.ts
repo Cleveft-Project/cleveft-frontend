@@ -77,6 +77,15 @@ export interface GradientSet {
   card: GradientStops;
   /** The ink hero on the home screen. */
   hero: GradientStops;
+  /**
+   * The page colour fading to nothing, for the top and bottom of a scroll
+   * view — content dissolves into the edge instead of being cut off by it.
+   *
+   * Must be the page colour at full opacity fading to *the same colour* at
+   * zero, not to `transparent`. Fading to transparent interpolates through
+   * transparent black, which reads as a grey smear on a light page.
+   */
+  edgeFade: GradientStops;
 }
 
 export const lightColors = {
@@ -337,6 +346,8 @@ export const lightGradients: GradientSet = {
   accentButton: ['#0E1B2A', '#0E1B2A'] as const,
   card: ['#FFFFFF', '#FFFFFF'] as const,
   hero: ['#16293C', '#0E1B2A'] as const,
+  // The page's own #F4F7F9, fading out.
+  edgeFade: ['rgba(244, 247, 249, 1)', 'rgba(244, 247, 249, 0)'] as const,
 };
 
 export const darkGradients: GradientSet = {
@@ -348,6 +359,8 @@ export const darkGradients: GradientSet = {
   accentButton: ['#22D3EE', '#0FA3B8'] as const,
   card: ['#121212', '#121212'] as const,
   hero: ['#1F1F1F', '#171717'] as const,
+  // True black, fading out.
+  edgeFade: ['rgba(0, 0, 0, 1)', 'rgba(0, 0, 0, 0)'] as const,
 };
 
 export const palettes: Record<ColorScheme, Palette> = {

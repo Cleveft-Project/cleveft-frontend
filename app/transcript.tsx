@@ -20,6 +20,7 @@ import { ErrorState, LoadingState, Pill } from '@/components/feedback';
 import { RoundButton, ScreenHeader, SectionHeader } from '@/components/headers';
 import { formatDuration } from '@/components/lecture-card';
 import { NeonButton } from '@/components/neon-button';
+import { ScrollEdges, useScrollEdges } from '@/components/scroll-edges';
 import { Screen } from '@/components/screen';
 import { Segmented } from '@/components/segmented';
 import { CoursePicker } from '@/components/course-picker';
@@ -36,6 +37,9 @@ export default function TranscriptScreen() {
   const { colors } = useTheme();
   const styles = useThemedStyles(createStyles);
   const router = useRouter();
+
+  // Content dissolves into the top and bottom edges as it scrolls.
+  const edges = useScrollEdges();
   const params = useLocalSearchParams<{ lectureId?: string }>();
   const lectureId = typeof params.lectureId === 'string' ? params.lectureId : null;
 
@@ -473,6 +477,8 @@ export default function TranscriptScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
         <ScrollView
+        onScroll={edges.onScroll}
+        scrollEventThrottle={16}
           contentContainerStyle={styles.content}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
@@ -607,6 +613,9 @@ export default function TranscriptScreen() {
           )}
         </ScrollView>
       </KeyboardAvoidingView>
+
+      {/* After the scroll view, so the fades paint over the content. */}
+      <ScrollEdges {...edges} />
     </Screen>
   );
 }

@@ -23,6 +23,7 @@ import { GlassCard } from '@/components/glass-card';
 import { SectionHeader } from '@/components/headers';
 import { formatRelativeDate } from '@/components/lecture-card';
 import { NeonButton } from '@/components/neon-button';
+import { ScrollEdges, useScrollEdges } from '@/components/scroll-edges';
 import { Screen } from '@/components/screen';
 import { useAsync } from '@/hooks/use-async';
 import { radius, spacing, typography, useTheme, useThemedStyles, type Palette } from '@/theme';
@@ -145,6 +146,9 @@ export default function CollabScreen() {
   const scrollRef = useRef<ScrollView>(null);
   useScrollToTop(scrollRef);
 
+  // Content dissolves into the top and bottom edges as it scrolls.
+  const edges = useScrollEdges();
+
   const feed = useAsync(() => collabApi.feed(), []);
   const myPaths = useAsync(() => collabApi.myPaths(), []);
   const discoverable = useAsync(() => collabApi.discoverPaths(), []);
@@ -257,6 +261,8 @@ export default function CollabScreen() {
       </View>
 
       <ScrollView
+        onScroll={edges.onScroll}
+        scrollEventThrottle={16}
         ref={scrollRef}
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
@@ -475,6 +481,9 @@ export default function CollabScreen() {
           </Animated.View>
         ) : null}
       </ScrollView>
+
+      {/* After the scroll view, so the fades paint over the content. */}
+      <ScrollEdges {...edges} />
     </Screen>
   );
 }

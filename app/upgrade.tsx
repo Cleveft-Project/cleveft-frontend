@@ -8,6 +8,7 @@ import type { BillingPeriod } from '@/api/types';
 import { GlassCard } from '@/components/glass-card';
 import { ScreenHeader } from '@/components/headers';
 import { NeonButton } from '@/components/neon-button';
+import { ScrollEdges, useScrollEdges } from '@/components/scroll-edges';
 import { Screen } from '@/components/screen';
 import { useAuth } from '@/state/auth-context';
 import { radius, spacing, typography, useTheme, useThemedStyles, type Palette } from '@/theme';
@@ -41,6 +42,9 @@ export default function UpgradeScreen() {
   const { colors } = useTheme();
   const styles = useThemedStyles(createStyles);
   const router = useRouter();
+
+  // Content dissolves into the top and bottom edges as it scrolls.
+  const edges = useScrollEdges();
   const { user, updateUser } = useAuth();
 
   const [period, setPeriod] = useState<BillingPeriod>('SEMESTER');
@@ -104,7 +108,12 @@ export default function UpgradeScreen() {
         subtitle={isPro ? 'You have unlimited recordings' : 'Never lose a lecture to a limit'}
       />
 
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        onScroll={edges.onScroll}
+        scrollEventThrottle={16}
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+      >
         {isPro ? null : (
           <View style={styles.periodRow}>
             {(Object.keys(PRICING) as BillingPeriod[]).map((option) => {
@@ -183,6 +192,9 @@ export default function UpgradeScreen() {
           </>
         )}
       </ScrollView>
+
+      {/* After the scroll view, so the fades paint over the content. */}
+      <ScrollEdges {...edges} />
     </Screen>
   );
 }

@@ -5,6 +5,7 @@ import { ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import { BASE_URL } from '@/api';
 import { Animated, staggeredEntrance } from '@/components/animated/entrance';
 import { ScreenHeader, SectionHeader } from '@/components/headers';
+import { ScrollEdges, useScrollEdges } from '@/components/scroll-edges';
 import { Screen } from '@/components/screen';
 import { SettingsGroup, SettingsRow } from '@/components/settings-row';
 import { ThemeToggle } from '@/components/theme-toggle';
@@ -23,13 +24,21 @@ export default function SettingsScreen() {
   const styles = useThemedStyles(createStyles);
   const { isDark, colors } = useTheme();
   const router = useRouter();
+
+  // Content dissolves into the top and bottom edges as it scrolls.
+  const edges = useScrollEdges();
   const voice = useVoice();
 
   return (
     <Screen edges={['top', 'bottom']}>
       <ScreenHeader title="Settings" />
 
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        onScroll={edges.onScroll}
+        scrollEventThrottle={16}
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+      >
         <Animated.View entering={staggeredEntrance(0)}>
           <SectionHeader title="Appearance" />
           <SettingsGroup>
@@ -114,6 +123,9 @@ export default function SettingsScreen() {
           <Text style={styles.footerHint}>Go back and get what you forgot.</Text>
         </View>
       </ScrollView>
+
+      {/* After the scroll view, so the fades paint over the content. */}
+      <ScrollEdges {...edges} />
     </Screen>
   );
 }

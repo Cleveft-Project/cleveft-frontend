@@ -38,6 +38,7 @@ import { SectionHeader } from '@/components/headers';
 import { LectureCard } from '@/components/lecture-card';
 import { CoursePicker } from '@/components/course-picker';
 import { RecordControl, type RecorderPhase } from '@/components/record-control';
+import { ScrollEdges, useScrollEdges } from '@/components/scroll-edges';
 import { Screen } from '@/components/screen';
 import { TextField } from '@/components/text-field';
 import { Waveform, normaliseMetering } from '@/components/waveform';
@@ -132,6 +133,9 @@ export default function RecordScreen() {
   // Tapping the tab you are already on returns you to the top of it.
   const scrollRef = useRef<ScrollView>(null);
   useScrollToTop(scrollRef);
+
+  // Content dissolves into the top and bottom edges as it scrolls.
+  const edges = useScrollEdges();
 
   const recorder = useAudioRecorder(RECORDING_OPTIONS);
   const recorderState = useAudioRecorderState(recorder);
@@ -419,6 +423,8 @@ export default function RecordScreen() {
   return (
     <Screen>
       <ScrollView
+        onScroll={edges.onScroll}
+        scrollEventThrottle={16}
         ref={scrollRef}
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
@@ -609,6 +615,9 @@ export default function RecordScreen() {
           </View>
         )}
       </ScrollView>
+
+      {/* After the scroll view, so the fades paint over the content. */}
+      <ScrollEdges {...edges} />
     </Screen>
   );
 }
