@@ -7,6 +7,7 @@ import {
 } from 'expo-router';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
+  ActivityIndicator,
   Alert,
   FlatList,
   KeyboardAvoidingView,
@@ -17,14 +18,27 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import Animated, { FadeInDown, FadeInUp, LinearTransition } from 'react-native-reanimated';
+import Animated, {
+  FadeInDown,
+  FadeInUp,
+  LinearTransition,
+  interpolateColor,
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+} from 'react-native-reanimated';
+import * as Clipboard from 'expo-clipboard';
 
 import { ApiError, chatApi, collabApi } from '@/api';
 import type { ChatMessage, Citation, ConversationSummary } from '@/api/types';
+import { useHaptics } from '@/components/animated/haptics';
 import { usePressScale } from '@/components/animated/press-scale';
 import { ChatHistory } from '@/components/chat-history';
 import { FloatingPrompt } from '@/components/floating-prompt';
 import { Kofi } from '@/components/kofi';
+import { Markdown } from '@/components/markdown';
+import { ScrollEdges, useScrollEdges } from '@/components/scroll-edges';
+import { useCollapsingHeader } from '@/state/chrome-context';
 import { useKofiLine, useKofiSpeech } from '@/components/kofi-says';
 import { GlassCard } from '@/components/glass-card';
 import { Screen } from '@/components/screen';
@@ -90,24 +104,176 @@ function CitationList({ citations }: { citations: Citation[] }) {
   );
 }
 
+/**
+ * One action under a message: copy, edit, share.
+ *
+ * <p>Text rather than icons. Three unlabelled glyphs under a bubble is a puzzle,
+ * and these are used rarely enough that being unmistakable beats being small.
+ */
+function BubbleAction({
+  label,
+  icon,
+  onPress,
+  disabled,
+}: {
+  label: string;
+  icon: React.ComponentProps<typeof Ionicons>['name'];
+  onPress: () => void;
+  disabled?: boolean;
+}) {
+  const styles = useThemedStyles(createStyles);
+  const { colors } = useTheme();
+  const haptics = useHaptics();
+
+  return (
+    <Pressable
+      onPress={() => {
+        haptics.tap();
+        onPress();
+      }}
+      disabled={disabled}
+      hitSlop={8}
+      style={styles.bubbleAction}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+    >
+      <Ionicons name={icon} size={13} color={colors.textMuted} />
+      <Text style={styles.bubbleActionText}>{label}</Text>
+    </Pressable>
+  );
+}
+
+/**
+ * The send control.
+ *
+ * <p>Was a flat circle with a text arrow in it, which sat at the same visual
+ * weight whether or not there was anything to send. Three things fix that: the
+ * arrow is drawn rather than typed, so it is centred instead of sitting on a
+ * font's baseline; the button grows and gains its fill only once the question is
+ * worth sending; and it dips under the finger. The composer's most-used control
+ * should be the most alive thing on the screen.
+ */
+function SendButton({
+  onPress,
+  ready,
+  busy,
+}: {
+  onPress: () => void;
+  /** There is something to send. */
+  ready: boolean;
+  /** An answer is already in flight. */
+  busy: boolean;
+}) {
+  const styles = useThemedStyles(createStyles);
+  const { colors } = useTheme();
+  const haptics = useHaptics();
+
+  const progress = useSharedValue(0);
+  const press = useSharedValue(0);
+
+  useEffect(() => {
+    progress.value = withSpring(ready && !busy ? 1 : 0, { damping: 14, stiffness: 190 });
+  }, [busy, progress, ready]);
+
+  const containerStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: (0.9 + progress.value * 0.1) * (1 - press.value * 0.12) }],
+    opacity: 0.55 + progress.value * 0.45,
+  }));
+
+  // Fades between the muted and the live fill rather than swapping colours, so
+  // the button never flickers as a word is typed and deleted.
+  const fillStyle = useAnimatedStyle(() => ({
+    backgroundColor: interpolateColor(
+      progress.value,
+      [0, 1],
+      [colors.surfaceSunken, colors.accentVivid],
+    ),
+  }));
+
+  const disabled = !ready || busy;
+
+  return (
+    <Animated.View style={containerStyle}>
+      <Pressable
+        onPress={() => {
+          haptics.commit();
+          onPress();
+        }}
+        onPressIn={() => {
+          press.value = withSpring(1, { damping: 18, stiffness: 320 });
+        }}
+        onPressOut={() => {
+          press.value = withSpring(0, { damping: 18, stiffness: 260 });
+        }}
+        disabled={disabled}
+        accessibilityRole="button"
+        accessibilityLabel={busy ? 'Waiting for an answer' : 'Send question'}
+        accessibilityState={{ disabled }}
+      >
+        <Animated.View style={[styles.sendButton, fillStyle]}>
+          {busy ? (
+            <ActivityIndicator size="small" color={colors.textMuted} />
+          ) : (
+            <Ionicons
+              name="arrow-up"
+              size={20}
+              color={ready ? colors.onFillPrimary : colors.textMuted}
+            />
+          )}
+        </Animated.View>
+      </Pressable>
+    </Animated.View>
+  );
+}
+
 function MessageBubble({
   message,
   onShare,
+  onEdit,
   sharing,
 }: {
   message: ChatMessage;
   onShare?: () => void;
+  /** Only on questions, and only where resending is possible. */
+  onEdit?: () => void;
   sharing: boolean;
 }) {
   const styles = useThemedStyles(createStyles);
   const isUser = message.role === 'user';
+  const [copied, setCopied] = useState(false);
+
+  /*
+   * Confirms in place rather than with a toast.
+   *
+   * A copy that gives no feedback gets pressed twice, and a toast covers the
+   * thing that was just copied. The label swapping to "Copied" for a moment is
+   * the whole confirmation, and it sits exactly where the eye already is.
+   */
+  const copy = () => {
+    Clipboard.setStringAsync(message.content);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1400);
+  };
 
   if (isUser) {
     return (
       // Rises from below on the right, the direction it was just sent from.
       <Animated.View entering={FadeInDown.duration(240).springify()} style={styles.userRow}>
-        <View style={styles.userBubble}>
-          <Text style={styles.userText}>{message.content}</Text>
+        <View style={styles.userColumn}>
+          <View style={styles.userBubble}>
+            <Text style={styles.userText}>{message.content}</Text>
+          </View>
+
+          <View style={styles.userActions}>
+            <BubbleAction
+              label={copied ? 'Copied' : 'Copy'}
+              icon={copied ? 'checkmark' : 'copy-outline'}
+              onPress={copy}
+            />
+            {onEdit ? (
+              <BubbleAction label="Edit" icon="create-outline" onPress={onEdit} />
+            ) : null}
+          </View>
         </View>
       </Animated.View>
     );
@@ -118,14 +284,27 @@ function MessageBubble({
     // arrive from visibly different places.
     <Animated.View entering={FadeInUp.duration(300).springify()} style={styles.assistantRow}>
       <GlassCard style={styles.assistantBubble}>
-        <Text style={styles.assistantText}>{message.content}</Text>
+        {/* Was a single <Text>, which drew "### 2. Layer 2 Bridging" and
+            "**IEEE 802.11**" literally down the screen. The model had been
+            formatting its answers properly all along. */}
+        <Markdown source={message.content} />
         <CitationList citations={message.citations} />
 
-        {onShare ? (
-          <Pressable onPress={onShare} disabled={sharing} hitSlop={8} style={styles.shareButton}>
-            <Text style={styles.shareText}>{sharing ? 'Sharing…' : 'Share with peers'}</Text>
-          </Pressable>
-        ) : null}
+        <View style={styles.assistantActions}>
+          <BubbleAction
+            label={copied ? 'Copied' : 'Copy'}
+            icon={copied ? 'checkmark' : 'copy-outline'}
+            onPress={copy}
+          />
+          {onShare ? (
+            <BubbleAction
+              label={sharing ? 'Sharing…' : 'Share'}
+              icon="share-social-outline"
+              onPress={onShare}
+              disabled={sharing}
+            />
+          ) : null}
+        </View>
       </GlassCard>
     </Animated.View>
   );
@@ -144,6 +323,10 @@ export default function ChatScreen() {
   const [conversationId, setConversationId] = useState<string | undefined>();
   const [draft, setDraft] = useState('');
   const [thinking, setThinking] = useState(false);
+
+  // Content dissolves into the edges, and the heading shrinks as you read.
+  const edges = useScrollEdges();
+  const headerStyle = useCollapsingHeader();
   const [error, setError] = useState<string | null>(null);
   const [sharingId, setSharingId] = useState<string | null>(null);
 
@@ -303,6 +486,29 @@ export default function ChatScreen() {
     return () => unsubscribers.forEach((unsubscribe) => unsubscribe());
   }, [navigation, scrollToEnd]);
 
+  /**
+   * Puts a question back in the composer to be reworded and asked again.
+   *
+   * <p>Everything from that question onward is dropped, including the answer it
+   * produced. Leaving them would show an answer to a question that is no longer
+   * on screen, and the student would have no way to tell which of the two
+   * versions it belonged to.
+   *
+   * <p>Locally only. The thread on the server keeps the original exchange, and
+   * the reworded question is asked as a new turn — rewriting history server-side
+   * would mean the citations already shown could silently change.
+   */
+  const editQuestion = (message: ChatMessage) => {
+    const index = messages.findIndex((entry) => entry.id === message.id);
+    if (index < 0 || thinking) {
+      return;
+    }
+
+    setMessages((previous) => previous.slice(0, index));
+    setDraft(message.content);
+    setError(null);
+  };
+
   const send = async (text: string) => {
     const question = text.trim();
     if (!question || thinking) {
@@ -410,12 +616,14 @@ export default function ChatScreen() {
         ) : null}
       </View>
 
-      <View style={styles.headerText}>
-        <Text style={styles.title}>Ask your lectures</Text>
+      {/* Shrinks and lifts as the thread scrolls, like every other screen. The
+          list drives it below; this only reacts. */}
+      <Animated.View style={[styles.headerText, headerStyle]}>
+        <Text style={styles.title}>What would you like to clear up?</Text>
         <Text style={styles.subtitle} numberOfLines={2}>
-          {lectureTitle ? `Scoped to ${lectureTitle}` : 'Answers grounded in your own recordings'}
+          {lectureTitle ? `Scoped to ${lectureTitle}` : 'Answers from your own lectures'}
         </Text>
-      </View>
+      </Animated.View>
 
       <KeyboardAvoidingView
         style={styles.flex}
@@ -434,11 +642,20 @@ export default function ChatScreen() {
           contentContainerStyle={styles.messages}
           showsVerticalScrollIndicator={false}
           onContentSizeChange={scrollToEnd}
+          // Chat was the one screen left out of this, because it is the one
+          // screen that is a FlatList rather than a ScrollView.
+          onScroll={edges.onScroll}
+          scrollEventThrottle={16}
           renderItem={({ item }) => (
             <MessageBubble
               message={item}
               sharing={sharingId === item.id}
               onShare={item.role === 'assistant' ? () => shareAnswer(item) : undefined}
+              // Not while an answer is in flight: the reply would arrive after
+              // the question it belongs to had already been removed.
+              onEdit={
+                item.role === 'user' && !thinking ? () => editQuestion(item) : undefined
+              }
             />
           )}
           ListEmptyComponent={
@@ -505,21 +722,16 @@ export default function ChatScreen() {
             onSubmitEditing={() => send(draft)}
           />
 
-          <Pressable
+          <SendButton
             onPress={() => send(draft)}
-            disabled={!draft.trim() || thinking}
-            accessibilityRole="button"
-            accessibilityLabel="Send question"
-            style={({ pressed }) => [
-              styles.sendButton,
-              (!draft.trim() || thinking) && styles.sendButtonDisabled,
-              pressed && styles.sendButtonPressed,
-            ]}
-          >
-            <Text style={styles.sendGlyph}>↑</Text>
-          </Pressable>
+            ready={!!draft.trim()}
+            busy={thinking}
+          />
         </View>
       </KeyboardAvoidingView>
+
+      {/* Above the composer, below the list. */}
+      <ScrollEdges {...edges} />
 
       {/* Rendered last so it layers over the composer and the list. */}
       <ChatHistory
@@ -709,24 +921,45 @@ const createStyles = (c: Palette, g: GlowSet) => StyleSheet.create({
     ...typography.body,
     color: c.text,
   },
+  // No backgroundColor here: the fill is animated between the muted and live
+  // states, and a static one underneath would win on the first frame.
   sendButton: {
-    width: 48,
-    height: 48,
+    width: 46,
+    height: 46,
     borderRadius: radius.pill,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: c.accentVivid,
     ...g.accentSoft,
   },
-  sendButtonDisabled: {
-    opacity: 0.35,
+
+  /* Message actions */
+
+  userColumn: {
+    alignItems: 'flex-end',
+    maxWidth: '86%',
+    gap: 2,
   },
-  sendButtonPressed: {
-    transform: [{ scale: 0.94 }],
+  userActions: {
+    flexDirection: 'row',
+    gap: spacing.md,
+    paddingRight: spacing.xs,
   },
-  sendGlyph: {
-    fontSize: 22,
-    fontWeight: '700',
-    color: c.textOnAccent,
+  assistantActions: {
+    flexDirection: 'row',
+    gap: spacing.lg,
+    marginTop: spacing.md,
+    paddingTop: spacing.md,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: c.borderMuted,
+  },
+  bubbleAction: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingVertical: 4,
+  },
+  bubbleActionText: {
+    ...typography.micro,
+    color: c.textMuted,
   },
 });
