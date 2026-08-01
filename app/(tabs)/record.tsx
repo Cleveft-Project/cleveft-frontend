@@ -41,6 +41,7 @@ import { RecordControl, type RecorderPhase } from '@/components/record-control';
 import { ScrollEdges, useScrollEdges } from '@/components/scroll-edges';
 import { Screen } from '@/components/screen';
 import { TextField } from '@/components/text-field';
+import { VideoImportSheet } from '@/components/video-import-sheet';
 import { Waveform, normaliseMetering } from '@/components/waveform';
 import { useAsync } from '@/hooks/use-async';
 import { coursesFromLectures, groupLecturesByCourse } from '@/lib/courses';
@@ -145,6 +146,7 @@ export default function RecordScreen() {
   const [courseCode, setCourseCode] = useState('');
   const [uploading, setUploading] = useState(false);
   const [importing, setImporting] = useState(false);
+  const [addingVideo, setAddingVideo] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   /**
    * Tracked here rather than read from the recorder: `isRecording` goes false
@@ -568,6 +570,28 @@ export default function RecordScreen() {
           </View>
         </Card>
 
+        {/* The other way in.
+            Adding a video from a lecture attaches it to that class, which is
+            the common case. This is the one that does not: a student teaching
+            themselves something no course of theirs covers still deserves the
+            notes, the search and the quizzes. Imported from here it belongs to
+            nothing, which is a perfectly good thing for it to belong to. */}
+        <Card onPress={isRecording || importing ? undefined : () => setAddingVideo(true)}>
+          <View style={styles.importRow}>
+            <View style={styles.importChip}>
+              <Ionicons name="logo-youtube" size={18} color={colors.accent} />
+            </View>
+            <View style={styles.importText}>
+              <Text style={styles.importTitle}>Add a video</Text>
+              <Text style={styles.importCopy}>
+                Anything you are learning from, course or not. To tie one to a
+                lecture instead, add it from that lecture.
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
+          </View>
+        </Card>
+
         <SectionHeader title="Your library" />
 
         {lectures.error && allLectures.length === 0 ? (
@@ -618,6 +642,17 @@ export default function RecordScreen() {
 
       {/* After the scroll view, so the fades paint over the content. */}
       <ScrollEdges {...edges} />
+
+      {/* No relatedLectureId: imported from here, a video belongs to nothing.
+          The course code above still applies if one was filled in, so an ML
+          video can sit under a course without pretending to be a lecture in
+          it. */}
+      <VideoImportSheet
+        visible={addingVideo}
+        onClose={() => setAddingVideo(false)}
+        courseCode={courseCode || undefined}
+        onImported={(lecture) => router.push(`/transcript?id=${lecture.id}`)}
+      />
     </Screen>
   );
 }

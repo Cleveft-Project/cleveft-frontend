@@ -210,6 +210,18 @@ export default function QuizScreen() {
                 </View>
               </View>
             ) : null}
+
+            {/* Said on the result, not buried in a settings page.
+                A student who assumes practising against a video is moving their
+                readiness would find out otherwise the week of an exam, which is
+                the worst possible time. The score and the topic breakdown are
+                real; only the meter is untouched. */}
+            {lecture.data?.source === 'YOUTUBE' ? (
+              <Text style={styles.practiceNote}>
+                Practice from a video — your exam readiness comes from your lectures, so this
+                does not change it.
+              </Text>
+            ) : null}
           </GlassCard>
         ) : null}
 
@@ -325,6 +337,16 @@ const createStyles = (c: Palette) => StyleSheet.create({
     ...typography.body,
     color: c.textSecondary,
     textAlign: 'center',
+  },
+  practiceNote: {
+    ...typography.micro,
+    color: c.textMuted,
+    textAlign: 'center',
+    marginTop: spacing.lg,
+    paddingTop: spacing.lg,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: c.borderMuted,
+    lineHeight: 16,
   },
   topicBlock: {
     width: '100%',

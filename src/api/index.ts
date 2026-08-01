@@ -185,6 +185,28 @@ export const lecturesApi = {
   },
 
   /**
+   * Imports a YouTube video as supporting material.
+   *
+   * JSON rather than multipart, because there is no file — only a link. Returns
+   * in PENDING like the other two imports; poll {@link status}.
+   *
+   * `relatedLectureId` is filled in automatically when the import starts from a
+   * lecture screen, which is the usual way in: a student mostly looks up a video
+   * because one particular class did not land.
+   */
+  importVideo(input: {
+    url: string;
+    title?: string;
+    courseCode?: string;
+    relatedLectureId?: string;
+  }) {
+    return request<Lecture>('/api/v1/transcriptions/videos', {
+      method: 'POST',
+      body: JSON.stringify(input),
+    });
+  },
+
+  /**
    * Re-runs the pipeline using the audio retained from the original upload.
    * Only valid for a lecture that isn't currently processing.
    */

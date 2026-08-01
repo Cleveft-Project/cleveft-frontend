@@ -63,6 +63,11 @@ export interface LectureSummary {
   status: LectureStatus;
   statusDetail?: string | null;
   source: LectureSource;
+  /**
+   * The lecture this was imported to help explain, or null if it stands alone.
+   * Supporting material is excluded from exam readiness.
+   */
+  relatedLectureId?: string | null;
   totalChunks: number;
   /** Key-concept terms, shown as pills on the lecture card. */
   topics: string[];
@@ -104,6 +109,8 @@ export interface Lecture {
   statusDetail?: string | null;
   source: LectureSource;
   sourceUrl?: string | null;
+  /** The lecture this was imported to help explain, or null. */
+  relatedLectureId?: string | null;
   fullTranscript?: string | null;
   structuredNotes?: NoteSection[] | null;
   keyConcepts?: KeyConcept[] | null;

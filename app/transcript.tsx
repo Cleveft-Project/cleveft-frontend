@@ -25,6 +25,7 @@ import { NeonButton } from '@/components/neon-button';
 import { ScrollEdges, useScrollEdges } from '@/components/scroll-edges';
 import { Screen } from '@/components/screen';
 import { Segmented } from '@/components/segmented';
+import { VideoImportSheet } from '@/components/video-import-sheet';
 import { CoursePicker } from '@/components/course-picker';
 import { LectureExamPrepTab } from '@/components/lecture-exam-prep';
 import { useAsync } from '@/hooks/use-async';
@@ -69,6 +70,7 @@ export default function TranscriptScreen() {
   const [courseDraft, setCourseDraft] = useState('');
   const [savingCourse, setSavingCourse] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [addingVideo, setAddingVideo] = useState(false);
 
   // Courses the student already uses, so assigning one here is a tap rather
   // than retyping a code they have entered a dozen times.
@@ -342,6 +344,19 @@ export default function TranscriptScreen() {
         <View style={styles.flexSpacer} />
         {editingTitle ? null : (
           <View style={styles.navActions}>
+            {/* The main way a video gets into Cleveft, and the reason it lives
+                here rather than on the Record tab: students go looking for one
+                because a particular class did not land. Starting the import
+                from that class records what it was for, without asking. Hidden
+                on a video's own page — attaching supporting material to
+                supporting material is a chain nobody wants to follow. */}
+            {data.source === 'YOUTUBE' ? null : (
+              <RoundButton
+                icon="logo-youtube"
+                onPress={() => setAddingVideo(true)}
+                label="Add a video for this lecture"
+              />
+            )}
             <RoundButton icon="create-outline" onPress={startEditingTitle} label="Rename lecture" />
             <RoundButton
               icon="trash-outline"
@@ -629,6 +644,18 @@ export default function TranscriptScreen() {
 
       {/* After the scroll view, so the fades paint over the content. */}
       <ScrollEdges {...edges} />
+
+      <VideoImportSheet
+        visible={addingVideo}
+        onClose={() => setAddingVideo(false)}
+        relatedLectureId={data.id}
+        relatedTitle={data.title}
+        courseCode={data.courseCode}
+        // Straight to the new item, which opens on its processing state. The
+        // alternative — staying put with a toast — leaves the student with no
+        // way to tell whether anything is happening.
+        onImported={(lecture) => router.push(`/transcript?id=${lecture.id}`)}
+      />
     </Screen>
   );
 }
