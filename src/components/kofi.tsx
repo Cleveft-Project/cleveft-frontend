@@ -142,6 +142,20 @@ export function Kofi({
 
   // --- props --------------------------------------------------------------
   const wingFlap = useSharedValue(0);
+  /**
+   * The pen and notepad, and the hand moving across it.
+   *
+   * <p>Kofi used to think by looking up and furrowing his brow, which reads as
+   * a bird that has been distracted rather than one working on your question.
+   * Giving him something in his wing is the difference: a character doing a job
+   * is alive, a character emoting is a graphic.
+   *
+   * <p>Two values because they are two ideas — whether the props are there at
+   * all, and where the nib is. Fading the props in and out separately means the
+   * scribble can be cancelled outright without the pen vanishing mid-stroke.
+   */
+  const penShow = useSharedValue(0);
+  const scribble = useSharedValue(0);
   const eggGlow = useSharedValue(0.55);
   const eggLift = useSharedValue(0);
 
@@ -289,6 +303,18 @@ export function Kofi({
 
       case 'thinking':
         happyEyes.value = withTiming(0, { duration: 120 });
+        penShow.value = withTiming(1, { duration: 260 });
+        // Fast and uneven against the slow head sway, because a hand writing
+        // moves at a different tempo from a head considering. Matched speeds
+        // would read as one mechanism driving both.
+        scribble.value = withRepeat(
+          withSequence(
+            withTiming(1, { duration: 240, easing: EASE_IN_OUT }),
+            withTiming(0, { duration: 190, easing: EASE_IN_OUT }),
+          ),
+          -1,
+          true,
+        );
         // Looks up and away, brow furrowed — the universal shorthand for
         // working something out.
         eyeOpen.value = withTiming(0.78, { duration: 300 });
@@ -381,6 +407,15 @@ export function Kofi({
         break;
     }
 
+    // Every mood but thinking puts the pen down. Set outside the switch so a
+    // mood added later cannot forget to, and leave Kofi holding a pen at a
+    // quiz result.
+    if (mood !== 'thinking') {
+      cancelAnimation(scribble);
+      scribble.value = withTiming(0, { duration: 160 });
+      penShow.value = withTiming(0, { duration: 200 });
+    }
+
     return () => {
       if (mood === 'thinking' || mood === 'listening') {
         cancelAnimation(gazeX);
@@ -388,13 +423,16 @@ export function Kofi({
         cancelAnimation(bodyLift);
         cancelAnimation(eggGlow);
       }
+      if (mood === 'thinking') {
+        cancelAnimation(scribble);
+      }
       if (mood === 'celebrate') {
         cancelAnimation(wingFlap);
       }
     };
   }, [
     beakOpen, bodyLift, bodyScale, bodyTilt, browAngle, browLift, eggGlow, eggLift,
-    eyeOpen, gazeX, gazeY, happyEyes, headTilt, mood, wingFlap,
+    eyeOpen, gazeX, gazeY, happyEyes, headTilt, mood, penShow, scribble, wingFlap,
   ]);
 
   /*
@@ -529,7 +567,34 @@ export function Kofi({
 
   const headProps = useAnimatedProps(() => ({ rotation: headTilt.value }));
   const wingLeftProps = useAnimatedProps(() => ({ rotation: -wingFlap.value * 34 }));
-  const wingRightProps = useAnimatedProps(() => ({ rotation: wingFlap.value * 34 }));
+
+  /*
+   * The writing hand.
+   *
+   * The right wing takes over as the arm while he works, so the pen is not a
+   * separate object floating beside a bird — it is being held. The rotation is
+   * added to the flap rather than replacing it, so the two never fight for the
+   * same transform.
+   */
+  const penGroupProps = useAnimatedProps(() => ({
+    opacity: penShow.value,
+    // Travels left-to-right across the pad and lifts very slightly, the arc a
+    // hand makes rather than a slider moving in one axis.
+    x: scribble.value * 7,
+    y: -Math.sin(scribble.value * Math.PI) * 1.2,
+  }));
+
+  const penWingProps = useAnimatedProps(() => ({
+    rotation: wingFlap.value * 34 + penShow.value * (10 + scribble.value * 12),
+  }));
+
+  const padProps = useAnimatedProps(() => ({ opacity: penShow.value }));
+
+  /* The line appearing under the nib, so the scribble leaves something behind. */
+  const inkProps = useAnimatedProps(() => ({
+    opacity: penShow.value * (0.25 + scribble.value * 0.75),
+    width: 1 + scribble.value * 8,
+  }));
 
   /*
    * Eyes span cy 44 ± 12, so 32 to 56.
@@ -628,8 +693,45 @@ export function Kofi({
           <AnimatedG originX={31} originY={68} animatedProps={wingLeftProps}>
             <Ellipse cx="27" cy="72" rx="7" ry="11" fill={colors.accentDim} />
           </AnimatedG>
-          <AnimatedG originX={69} originY={68} animatedProps={wingRightProps}>
+          <AnimatedG originX={69} originY={68} animatedProps={penWingProps}>
             <Ellipse cx="73" cy="72" rx="7" ry="11" fill={colors.accentDim} />
+          </AnimatedG>
+
+          {/* Notepad and pen. Drawn after the wing so the pen sits in front of
+              it, and before the head so nothing overlaps his face. Opacity is
+              driven rather than the group being unmounted, because mounting SVG
+              children mid-animation drops a frame on Android. */}
+          <AnimatedG animatedProps={padProps}>
+            <Rect
+              x="60" y="74" width="26" height="18" rx="2.5"
+              fill={colors.surfaceSolid}
+              stroke={colors.accentDeep}
+              strokeWidth={1.4}
+            />
+            {/* Ruled lines, so it reads as paper at 100px rather than a card. */}
+            <Path d="M64 80 H82" stroke={colors.accentDim} strokeWidth={1} opacity={0.5} />
+            <Path d="M64 86 H78" stroke={colors.accentDim} strokeWidth={1} opacity={0.5} />
+            <AnimatedRect
+              x="64" y="83" height="1.6" rx="0.8"
+              fill={colors.accentVivid}
+              animatedProps={inkProps}
+            />
+          </AnimatedG>
+
+          <AnimatedG animatedProps={penGroupProps}>
+            {/* Barrel, then nib. Angled like a held pen, not a pointer. */}
+            <Path
+              d="M63 84 L69 74"
+              stroke={colors.ink}
+              strokeWidth={2.6}
+              strokeLinecap="round"
+            />
+            <Path
+              d="M62 86 L63.4 83.2"
+              stroke={colors.accentVivid}
+              strokeWidth={2.6}
+              strokeLinecap="round"
+            />
           </AnimatedG>
 
           {/* Head — deliberately huge, and everything expressive lives on it. */}
