@@ -654,7 +654,7 @@ export default function TranscriptScreen() {
         // Straight to the new item, which opens on its processing state. The
         // alternative — staying put with a toast — leaves the student with no
         // way to tell whether anything is happening.
-        onImported={(lecture) => router.push(`/transcript?id=${lecture.id}`)}
+        onImported={(lecture) => router.push(`/transcript?lectureId=${lecture.id}`)}
       />
     </Screen>
   );

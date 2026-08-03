@@ -651,7 +651,7 @@ export default function RecordScreen() {
         visible={addingVideo}
         onClose={() => setAddingVideo(false)}
         courseCode={courseCode || undefined}
-        onImported={(lecture) => router.push(`/transcript?id=${lecture.id}`)}
+        onImported={(lecture) => router.push(`/transcript?lectureId=${lecture.id}`)}
       />
     </Screen>
   );
