@@ -414,8 +414,11 @@ export default function HomeScreen() {
         <Animated.View entering={staggeredEntrance(4)}>
           <SectionHeader
             title="Recent lectures"
+            // The library, not the recorder. "See all" used to open the Record
+            // tab because that is where the list happened to live, so asking to
+            // see your lectures put a microphone in front of you.
             action={allLectures.length > 4 ? 'See all' : undefined}
-            onAction={allLectures.length > 4 ? () => router.push('/record') : undefined}
+            onAction={allLectures.length > 4 ? () => router.push('/library') : undefined}
           />
         </Animated.View>
 
