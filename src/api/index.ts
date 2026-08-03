@@ -200,9 +200,12 @@ export const lecturesApi = {
     courseCode?: string;
     relatedLectureId?: string;
   }) {
+    // The object, not a string: request() serialises the body itself, so
+    // stringifying here sends a JSON string where the server expects an object
+    // and nothing binds.
     return request<Lecture>('/api/v1/transcriptions/videos', {
       method: 'POST',
-      body: JSON.stringify(input),
+      body: input,
     });
   },
 
@@ -237,6 +240,19 @@ export const chatApi = {
 
   messages(conversationId: string) {
     return request<ChatMessage[]>(`/api/v1/conversations/${conversationId}/messages`);
+  },
+
+  /**
+   * Renames a conversation, pins it, or both.
+   *
+   * PATCH, so omitting a field leaves it alone — pinning must not clear a name
+   * the student just set.
+   */
+  updateConversation(conversationId: string, input: { title?: string; pinned?: boolean }) {
+    return request<ConversationSummary>(`/api/v1/conversations/${conversationId}`, {
+      method: 'PATCH',
+      body: input,
+    });
   },
 
   deleteConversation(conversationId: string) {

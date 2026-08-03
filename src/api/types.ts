@@ -162,6 +162,8 @@ export interface ConversationSummary {
   id: string;
   lectureId?: string | null;
   title?: string | null;
+  /** Held above the date groups in history. */
+  pinned?: boolean;
   createdAt: string;
   updatedAt: string;
 }

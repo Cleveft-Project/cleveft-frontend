@@ -22,7 +22,6 @@ import Animated, {
   FadeInDown,
   FadeInUp,
   LinearTransition,
-  interpolateColor,
   useAnimatedStyle,
   useSharedValue,
   withSpring,
@@ -43,7 +42,7 @@ import { useKofiLine, useKofiSpeech } from '@/components/kofi-says';
 import { GlassCard } from '@/components/glass-card';
 import { Screen } from '@/components/screen';
 import { ThinkingDots } from '@/components/thinking-dots';
-import { radius, spacing, typography, useTheme, useThemedStyles, type GlowSet, type Palette } from '@/theme';
+import { radius, spacing, typography, useTheme, useThemedStyles, type Palette } from '@/theme';
 
 const SUGGESTIONS = [
   'Summarise my most recent lecture',
@@ -175,19 +174,23 @@ function SendButton({
     progress.value = withSpring(ready && !busy ? 1 : 0, { damping: 14, stiffness: 190 });
   }, [busy, progress, ready]);
 
+  /*
+   * Scale and opacity only.
+   *
+   * Animating backgroundColor here drew a faceted grey polygon behind the
+   * button on Android: elevation shadows are computed from the view's
+   * background, and a colour supplied by the animated style is not resolved
+   * when that outline is measured, so the platform approximates it. The fill is
+   * static now and the whole control dims instead, which reads the same and
+   * gives Android a real circle to cast from.
+   */
   const containerStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: (0.9 + progress.value * 0.1) * (1 - press.value * 0.12) }],
-    opacity: 0.55 + progress.value * 0.45,
-  }));
-
-  // Fades between the muted and the live fill rather than swapping colours, so
-  // the button never flickers as a word is typed and deleted.
-  const fillStyle = useAnimatedStyle(() => ({
-    backgroundColor: interpolateColor(
-      progress.value,
-      [0, 1],
-      [colors.surfaceSunken, colors.accentVivid],
-    ),
+    transform: [{ scale: (0.94 + progress.value * 0.06) * (1 - press.value * 0.12) }],
+    // Only lightly dimmed when there is nothing to send. It was faint enough to
+    // look broken, and this button has no second state to swap to the way
+    // Telegram's swaps to a microphone — it is always the send button, so it
+    // should always look like one.
+    opacity: 0.62 + progress.value * 0.38,
   }));
 
   const disabled = !ready || busy;
@@ -210,17 +213,16 @@ function SendButton({
         accessibilityLabel={busy ? 'Waiting for an answer' : 'Send question'}
         accessibilityState={{ disabled }}
       >
-        <Animated.View style={[styles.sendButton, fillStyle]}>
+        <View style={styles.sendButton}>
           {busy ? (
-            <ActivityIndicator size="small" color={colors.textMuted} />
+            <ActivityIndicator size="small" color={colors.onFillPrimary} />
           ) : (
-            <Ionicons
-              name="arrow-up"
-              size={20}
-              color={ready ? colors.onFillPrimary : colors.textMuted}
-            />
+            // No rotation: Ionicons draws paper-plane on the diagonal already,
+            // so the -12deg I had was tilting an angled glyph twice. Centred by
+            // flex, with no margin nudges — those were what pushed it off.
+            <Ionicons name="paper-plane" size={19} color={colors.onFillPrimary} />
           )}
-        </Animated.View>
+        </View>
       </Pressable>
     </Animated.View>
   );
@@ -408,6 +410,37 @@ export default function ChatScreen() {
     setMessages([]);
     setConversationId(undefined);
     setError(null);
+  };
+
+  /*
+   * Rename and pin both apply locally first, then tell the server.
+   *
+   * The drawer is open and being looked at when either happens, so waiting on a
+   * round trip before the row changes makes the tap feel ignored. On failure the
+   * list is reloaded, which puts the server's version back — the wrong outcome
+   * is visible for a moment rather than silently kept.
+   */
+  const renameConversation = async (conversation: ConversationSummary, title: string) => {
+    setConversations((previous) =>
+      previous.map((item) => (item.id === conversation.id ? { ...item, title } : item)),
+    );
+    try {
+      await chatApi.updateConversation(conversation.id, { title });
+    } catch {
+      void loadHistory();
+    }
+  };
+
+  const togglePin = async (conversation: ConversationSummary) => {
+    const pinned = !conversation.pinned;
+    setConversations((previous) =>
+      previous.map((item) => (item.id === conversation.id ? { ...item, pinned } : item)),
+    );
+    try {
+      await chatApi.updateConversation(conversation.id, { pinned });
+    } catch {
+      void loadHistory();
+    }
   };
 
   const removeConversation = (conversation: ConversationSummary) => {
@@ -700,7 +733,10 @@ export default function ChatScreen() {
                     dots. This is the longest pause in the app, and the one
                     place his line does real work: "let me go back for it" is
                     the product's whole promise, said by the thing doing it. */}
-                <Kofi mood="thinking" size={44} />
+                {/* Was 44, at which the notepad and pen were a smudge and the
+                    bob was invisible. He is the only thing on screen during
+                    this wait, so he can afford the room. */}
+                <Kofi mood="thinking" size={72} />
                 <ThinkingDots />
                 <Text style={styles.thinkingText}>{thinkingLine}</Text>
               </Animated.View>
@@ -743,12 +779,14 @@ export default function ChatScreen() {
         onSelect={openConversation}
         onNew={startNewChat}
         onDelete={removeConversation}
+        onRename={renameConversation}
+        onTogglePin={togglePin}
       />
     </Screen>
   );
 }
 
-const createStyles = (c: Palette, g: GlowSet) => StyleSheet.create({
+const createStyles = (c: Palette) => StyleSheet.create({
   flex: {
     flex: 1,
   },
@@ -923,13 +961,18 @@ const createStyles = (c: Palette, g: GlowSet) => StyleSheet.create({
   },
   // No backgroundColor here: the fill is animated between the muted and live
   // states, and a static one underneath would win on the first frame.
+  // No shadow. An elevation here rendered as a faceted octagon on Android:
+  // the platform derives its shadow from the view's outline, and this button
+  // lives inside a parent that scales it, so the outline is approximated rather
+  // than measured. Telegram's, which this is modelled on, is flat anyway — a
+  // control sitting on a flat composer has nothing to cast onto.
   sendButton: {
     width: 46,
     height: 46,
     borderRadius: radius.pill,
     alignItems: 'center',
     justifyContent: 'center',
-    ...g.accentSoft,
+    backgroundColor: c.accentVivid,
   },
 
   /* Message actions */
