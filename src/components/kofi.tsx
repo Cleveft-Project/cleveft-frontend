@@ -5,6 +5,7 @@ import Animated, {
   Easing,
   useAnimatedProps,
   useAnimatedStyle,
+  useDerivedValue,
   useSharedValue,
   withDelay,
   withRepeat,
@@ -156,6 +157,19 @@ export function Kofi({
    */
   const penShow = useSharedValue(0);
   const scribble = useSharedValue(0);
+
+  /**
+   * Which of two poses he is in while thinking: writing, or scratching his head.
+   *
+   * <p>0 is head down over the notepad, 1 is pen away and a wing up at his
+   * temple. One pose held for the whole wait reads as a loop no matter how well
+   * it is animated — what makes a character look like it is thinking is that it
+   * keeps changing its mind about how to think. He alternates, and the two
+   * halves are different lengths so the cycle never lands on the same beat.
+   */
+  const ponder = useSharedValue(0);
+  /** Fast oscillation of the raised wing. Only visible while pondering. */
+  const scratch = useSharedValue(0);
   const eggGlow = useSharedValue(0.55);
   const eggLift = useSharedValue(0);
 
@@ -303,7 +317,32 @@ export function Kofi({
 
       case 'thinking':
         happyEyes.value = withTiming(0, { duration: 120 });
+        // Brings out the pen and pad. Without this, `writing` stays at zero and
+        // every prop he holds is invisible, which leaves a bird bobbing at
+        // nothing.
         penShow.value = withTiming(1, { duration: 260 });
+
+        // Writes for a while, then sits back and scratches. The holds are what
+        // stop it reading as a metronome — he arrives at a pose and stays in it
+        // long enough to look like he meant it.
+        ponder.value = withRepeat(
+          withSequence(
+            withTiming(0, { duration: 2400, easing: EASE_IN_OUT }),
+            withTiming(1, { duration: 420, easing: EASE_IN_OUT }),
+            withTiming(1, { duration: 1500, easing: EASE_IN_OUT }),
+            withTiming(0, { duration: 380, easing: EASE_IN_OUT }),
+          ),
+          -1,
+          false,
+        );
+        scratch.value = withRepeat(
+          withSequence(
+            withTiming(1, { duration: 170, easing: EASE_IN_OUT }),
+            withTiming(0, { duration: 170, easing: EASE_IN_OUT }),
+          ),
+          -1,
+          true,
+        );
         // Fast and uneven against the slow head sway, because a hand writing
         // moves at a different tempo from a head considering. Matched speeds
         // would read as one mechanism driving both.
@@ -341,6 +380,49 @@ export function Kofi({
           withSequence(
             withTiming(1, { duration: 700, easing: EASE_IN_OUT }),
             withTiming(0.4, { duration: 700, easing: EASE_IN_OUT }),
+          ),
+          -1,
+          true,
+        );
+        /*
+         * He has to move, not just emote.
+         *
+         * This mood used to change only the face and leave the body parked, so
+         * at the size he appears in chat it read as a still image with a
+         * twitching head — which is worse than no animation, because a frozen
+         * character during the app's longest wait suggests the app itself has
+         * frozen.
+         *
+         * The bob is slower than the head sway and slower still than the pen,
+         * so the three never sync up into one pulse. Three tempos is what makes
+         * a body look like it is doing something rather than vibrating.
+         */
+        // Bigger than a breath. At the size he appears in chat, a two-pixel
+        // bob is indistinguishable from being parked, which is exactly how the
+        // first attempt at this read.
+        bodyLift.value = withRepeat(
+          withSequence(
+            withTiming(-6, { duration: 900, easing: EASE_IN_OUT }),
+            withTiming(3, { duration: 1050, easing: EASE_IN_OUT }),
+          ),
+          -1,
+          true,
+        );
+        bodyTilt.value = withRepeat(
+          withSequence(
+            withTiming(-5, { duration: 1300, easing: EASE_IN_OUT }),
+            withTiming(5, { duration: 1300, easing: EASE_IN_OUT }),
+          ),
+          -1,
+          true,
+        );
+        // A murmur. Working something out is rarely silent, and a beak that
+        // opens a little on the way up sells the thought better than the brow
+        // does on its own.
+        beakOpen.value = withRepeat(
+          withSequence(
+            withTiming(0.32, { duration: 620, easing: EASE_IN_OUT }),
+            withTiming(0.06, { duration: 780, easing: EASE_IN_OUT }),
           ),
           -1,
           true,
@@ -412,8 +494,12 @@ export function Kofi({
     // quiz result.
     if (mood !== 'thinking') {
       cancelAnimation(scribble);
+      cancelAnimation(ponder);
+      cancelAnimation(scratch);
       scribble.value = withTiming(0, { duration: 160 });
       penShow.value = withTiming(0, { duration: 200 });
+      ponder.value = withTiming(0, { duration: 200 });
+      scratch.value = 0;
     }
 
     return () => {
@@ -425,6 +511,10 @@ export function Kofi({
       }
       if (mood === 'thinking') {
         cancelAnimation(scribble);
+        cancelAnimation(ponder);
+        cancelAnimation(scratch);
+        cancelAnimation(bodyTilt);
+        cancelAnimation(beakOpen);
       }
       if (mood === 'celebrate') {
         cancelAnimation(wingFlap);
@@ -432,7 +522,8 @@ export function Kofi({
     };
   }, [
     beakOpen, bodyLift, bodyScale, bodyTilt, browAngle, browLift, eggGlow, eggLift,
-    eyeOpen, gazeX, gazeY, happyEyes, headTilt, mood, penShow, scribble, wingFlap,
+    eyeOpen, gazeX, gazeY, happyEyes, headTilt, mood, penShow, ponder, scratch,
+    scribble, wingFlap,
   ]);
 
   /*
@@ -566,7 +657,6 @@ export function Kofi({
   }));
 
   const headProps = useAnimatedProps(() => ({ rotation: headTilt.value }));
-  const wingLeftProps = useAnimatedProps(() => ({ rotation: -wingFlap.value * 34 }));
 
   /*
    * The writing hand.
@@ -576,8 +666,11 @@ export function Kofi({
    * added to the flap rather than replacing it, so the two never fight for the
    * same transform.
    */
+  /* Everything to do with writing fades out as he sits back to think. */
+  const writing = useDerivedValue(() => penShow.value * (1 - ponder.value));
+
   const penGroupProps = useAnimatedProps(() => ({
-    opacity: penShow.value,
+    opacity: writing.value,
     // Travels left-to-right across the pad and lifts very slightly, the arc a
     // hand makes rather than a slider moving in one axis.
     x: scribble.value * 7,
@@ -585,15 +678,36 @@ export function Kofi({
   }));
 
   const penWingProps = useAnimatedProps(() => ({
-    rotation: wingFlap.value * 34 + penShow.value * (10 + scribble.value * 12),
+    rotation: wingFlap.value * 34 + writing.value * (10 + scribble.value * 12),
   }));
 
-  const padProps = useAnimatedProps(() => ({ opacity: penShow.value }));
+  const padProps = useAnimatedProps(() => ({ opacity: writing.value }));
 
   /* The line appearing under the nib, so the scribble leaves something behind. */
   const inkProps = useAnimatedProps(() => ({
-    opacity: penShow.value * (0.25 + scribble.value * 0.75),
+    opacity: writing.value * (0.25 + scribble.value * 0.75),
     width: 1 + scribble.value * 8,
+  }));
+
+  /*
+   * The other wing comes up to his temple.
+   *
+   * Rotated about its own shoulder rather than moved, so it swings like an arm
+   * instead of sliding up the side of him. The scratch rides on top as a small
+   * fast wobble — the movement is in the wrist, not the shoulder, which is why
+   * it is a couple of degrees against the ninety the arm travels.
+   */
+  const wingLeftProps = useAnimatedProps(() => ({
+    // Clockwise, which is positive here: the wing hangs down-left of the
+    // shoulder at (31, 68), so swinging it that way carries the tip up the side
+    // of his head rather than out across his belly.
+    rotation:
+      -wingFlap.value * 34
+      + ponder.value * (100 + scratch.value * 8),
+    // Rotation alone only lifts the tip a few units, because the wing sits so
+    // close to its own pivot. The nudge is what actually puts it against his
+    // temple.
+    y: -ponder.value * 7,
   }));
 
   /*

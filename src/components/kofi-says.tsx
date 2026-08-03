@@ -73,11 +73,9 @@ const LINES: Record<KofiOccasion, string[]> = {
     'What did the lecturer say? I kept it.',
     'I was listening. Go on, test me.',
   ],
-  chatThinking: [
-    'Let me go back for it…',
-    'Checking what he actually said…',
-    'One moment — finding the passage…',
-  ],
+  // One line, not three. The others were rotating in and one of them was the
+  // thing he asked to be rid of.
+  chatThinking: ["I'm getting your answer for you…"],
   homeStreakAlive: [
     'You are on a run. Keep it.',
     'Back again — I like that.',
