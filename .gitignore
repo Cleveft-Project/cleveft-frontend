@@ -44,3 +44,6 @@ example
 # generated native folders
 /ios
 /android
+
+# Working notes, not project documentation.
+BUILD_APK.md
