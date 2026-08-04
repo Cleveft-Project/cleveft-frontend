@@ -1,9 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import React, { useState } from 'react';
 import {
-  KeyboardAvoidingView,
-  Modal,
-  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -14,6 +11,7 @@ import { ApiError, lecturesApi } from '@/api';
 import type { Lecture } from '@/api/types';
 import { useHaptics } from '@/components/animated/haptics';
 import { NeonButton } from '@/components/neon-button';
+import { Sheet } from '@/components/sheet';
 import { TextField } from '@/components/text-field';
 import { radius, spacing, typography, useTheme, useThemedStyles, type Palette } from '@/theme';
 
@@ -89,17 +87,9 @@ export function VideoImportSheet({
   };
 
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={close}>
-      <Pressable style={styles.backdrop} onPress={close} accessibilityLabel="Close" />
-
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        style={styles.lift}
-      >
-        <View style={styles.sheet}>
-          <View style={styles.grabber} />
-
-          <View style={styles.header}>
+    <Sheet visible={visible} onClose={close}>
+      <>
+        <View style={styles.header}>
             <View style={styles.icon}>
               <Ionicons name="logo-youtube" size={20} color={colors.danger} />
             </View>
@@ -150,40 +140,15 @@ export function VideoImportSheet({
             loading={importing}
           />
 
-          <Pressable onPress={close} style={styles.cancel} accessibilityRole="button">
-            <Text style={styles.cancelText}>Cancel</Text>
-          </Pressable>
-        </View>
-      </KeyboardAvoidingView>
-    </Modal>
+        <Pressable onPress={close} style={styles.cancel} accessibilityRole="button">
+          <Text style={styles.cancelText}>Cancel</Text>
+        </Pressable>
+      </>
+    </Sheet>
   );
 }
 
 const createStyles = (c: Palette) => StyleSheet.create({
-  backdrop: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-  },
-  lift: {
-    flex: 1,
-    justifyContent: 'flex-end',
-  },
-  sheet: {
-    backgroundColor: c.surfaceSolid,
-    borderTopLeftRadius: radius.xl,
-    borderTopRightRadius: radius.xl,
-    paddingHorizontal: spacing.xl,
-    paddingTop: spacing.md,
-    paddingBottom: spacing.xxxl,
-    gap: spacing.lg,
-  },
-  grabber: {
-    alignSelf: 'center',
-    width: 36,
-    height: 4,
-    borderRadius: radius.pill,
-    backgroundColor: c.borderMuted,
-  },
   header: {
     flexDirection: 'row',
     alignItems: 'center',

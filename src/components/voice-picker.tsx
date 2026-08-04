@@ -5,6 +5,7 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from
 
 import { useHaptics } from '@/components/animated/haptics';
 import { availableVoices, previewVoice } from '@/components/kofi-says';
+import { Sheet } from '@/components/sheet';
 import { useFeedback } from '@/state/feedback-context';
 import { radius, spacing, typography, useTheme, useThemedStyles, type Palette } from '@/theme';
 
@@ -117,13 +118,8 @@ export function VoicePicker({ visible, onClose }: { visible: boolean; onClose: (
   const counters = new Map<string, number>();
 
   return (
-    // A plain overlay rather than a Modal: this is opened from inside Settings,
-    // which is already a full screen, and nesting native windows has cost us a
-    // day of debugging elsewhere in this app.
-    <Pressable style={styles.backdrop} onPress={onClose} accessibilityLabel="Close">
-      <View style={styles.sheet} onStartShouldSetResponder={() => true}>
-        <View style={styles.grabber} />
-
+    <Sheet visible={visible} onClose={onClose}>
+      <>
         <View style={styles.head}>
           <Text style={styles.title}>Kofi&apos;s voice</Text>
           <Text style={styles.subtitle}>Tap any voice to hear it.</Text>
@@ -141,7 +137,12 @@ export function VoicePicker({ visible, onClose }: { visible: boolean; onClose: (
             </Text>
           </View>
         ) : (
-          <ScrollView contentContainerStyle={styles.list} showsVerticalScrollIndicator={false}>
+          <ScrollView
+            style={styles.listWrap}
+            contentContainerStyle={styles.list}
+            showsVerticalScrollIndicator={false}
+            nestedScrollEnabled
+          >
             {/* Automatic stays available, and stays first. Someone who dislikes
                 every option should be able to get back to the default without
                 reinstalling. */}
@@ -182,6 +183,11 @@ export function VoicePicker({ visible, onClose }: { visible: boolean; onClose: (
                   key={option.label}
                   onPress={() => setRate(option.value)}
                   style={[styles.rateChip, active && styles.rateChipActive]}
+                  // The chip is about 32pt tall for the sake of the layout, well
+                  // under the ~48pt a fingertip actually covers. hitSlop keeps
+                  // the look and gives the touch the area it needs — without it
+                  // a tap that visually lands on the chip misses the view.
+                  hitSlop={{ top: 10, bottom: 10, left: 4, right: 4 }}
                   accessibilityRole="radio"
                   accessibilityState={{ selected: active }}
                 >
@@ -197,8 +203,8 @@ export function VoicePicker({ visible, onClose }: { visible: boolean; onClose: (
         <Pressable onPress={onClose} style={styles.done} accessibilityRole="button">
           <Text style={styles.doneText}>Done</Text>
         </Pressable>
-      </View>
-    </Pressable>
+      </>
+    </Sheet>
   );
 }
 
@@ -237,31 +243,24 @@ function Row({
 }
 
 const createStyles = (c: Palette) => StyleSheet.create({
-  backdrop: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'flex-end',
-  },
-  sheet: {
-    backgroundColor: c.surfaceSolid,
-    borderTopLeftRadius: radius.xl,
-    borderTopRightRadius: radius.xl,
-    paddingTop: spacing.md,
-    paddingBottom: spacing.xl,
-    maxHeight: '78%',
-  },
-  grabber: {
-    alignSelf: 'center',
-    width: 36,
-    height: 4,
-    borderRadius: radius.pill,
-    backgroundColor: c.borderMuted,
-  },
+  /*
+   * The backdrop, sheet chrome and grabber all live in Sheet now. What is left
+   * here is only this picker's own content — which is the point of having moved
+   * them: an overlay that dims a band in the middle of the screen is what you
+   * get when every sheet rolls its own.
+   */
   head: {
-    paddingHorizontal: spacing.xl,
-    paddingTop: spacing.lg,
-    paddingBottom: spacing.md,
+    paddingTop: spacing.xs,
+    paddingBottom: spacing.xs,
     gap: 2,
+  },
+  /*
+   * Bounded, or a device with twenty voices installed pushes Speed and Done off
+   * the bottom of the sheet. The sheet caps its own height, but a child that
+   * wants to be tall still needs telling.
+   */
+  listWrap: {
+    maxHeight: 260,
   },
   title: {
     ...typography.heading,
@@ -282,9 +281,8 @@ const createStyles = (c: Palette) => StyleSheet.create({
     lineHeight: 19,
   },
   list: {
-    paddingHorizontal: spacing.xl,
     gap: spacing.sm,
-    paddingBottom: spacing.lg,
+    paddingBottom: spacing.sm,
   },
   row: {
     flexDirection: 'row',
