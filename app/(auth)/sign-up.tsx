@@ -86,6 +86,12 @@ export default function SignUpScreen() {
         university: university.trim() || undefined,
         programme: programme.trim() || undefined,
       });
+
+      // Straight into setup rather than home. Everything it asks is skippable
+      // and lives on the profile too, so this costs a new student nothing — but
+      // without their courses Cleveft cannot introduce them to anyone, and the
+      // whole Circle tab is empty by construction.
+      router.replace('/setup');
     } catch (error) {
       if (error instanceof ApiError) {
         setFormError(error.message);
@@ -159,7 +165,7 @@ export default function SignUpScreen() {
             </View>
 
             <TextField
-              label="UNIVERSITY (OPTIONAL)"
+              label="INSTITUTION (OPTIONAL)"
               value={university}
               onChangeText={setUniversity}
               placeholder="KNUST"
