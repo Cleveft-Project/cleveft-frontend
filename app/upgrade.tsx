@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import Animated from 'react-native-reanimated';
 
 import { ApiError, authApi } from '@/api';
 import type { BillingPeriod } from '@/api/types';
@@ -10,6 +11,7 @@ import { ScreenHeader } from '@/components/headers';
 import { NeonButton } from '@/components/neon-button';
 import { ScrollEdges, useScrollEdges } from '@/components/scroll-edges';
 import { Screen } from '@/components/screen';
+import { useCollapsingHeader } from '@/state/chrome-context';
 import { useAuth } from '@/state/auth-context';
 import { radius, spacing, typography, useTheme, useThemedStyles, type Palette } from '@/theme';
 
@@ -45,6 +47,9 @@ export default function UpgradeScreen() {
 
   // Content dissolves into the top and bottom edges as it scrolls.
   const edges = useScrollEdges();
+  // Title shrinks and lifts as the page scrolls, matching every other
+  // scrolling screen in the app.
+  const headerStyle = useCollapsingHeader();
   const { user, updateUser } = useAuth();
 
   const [period, setPeriod] = useState<BillingPeriod>('SEMESTER');
@@ -103,10 +108,12 @@ export default function UpgradeScreen() {
 
   return (
     <Screen edges={['top', 'bottom']}>
-      <ScreenHeader
-        title={isPro ? 'Your plan' : 'Cleveft Pro'}
-        subtitle={isPro ? 'You have unlimited recordings' : 'Never lose a lecture to a limit'}
-      />
+      <Animated.View style={headerStyle}>
+        <ScreenHeader
+          title={isPro ? 'Your plan' : 'Cleveft Pro'}
+          subtitle={isPro ? 'You have unlimited recordings' : 'Never lose a lecture to a limit'}
+        />
+      </Animated.View>
 
       <ScrollView
         onScroll={edges.onScroll}

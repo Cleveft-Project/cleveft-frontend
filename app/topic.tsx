@@ -11,6 +11,7 @@ import { GlassCard } from '@/components/glass-card';
 import { ScreenHeader } from '@/components/headers';
 import { ScrollEdges, useScrollEdges } from '@/components/scroll-edges';
 import { Screen } from '@/components/screen';
+import { useCollapsingHeader } from '@/state/chrome-context';
 import { useAsync } from '@/hooks/use-async';
 import { radius, spacing, typography, useTheme, useThemedStyles, type Palette } from '@/theme';
 
@@ -40,6 +41,12 @@ export default function TopicScreen() {
 
   const edges = useScrollEdges();
 
+  // Title shrinks and lifts as the page scrolls, matching every other
+
+  // scrolling screen in the app.
+
+  const headerStyle = useCollapsingHeader();
+
   const answers = useAsync(
     () => examPrepApi.topicAnswers(topic, courseCode),
     [topic, courseCode],
@@ -51,18 +58,20 @@ export default function TopicScreen() {
 
   return (
     <Screen edges={['top', 'bottom']} blob="violet">
-      <ScreenHeader
-        // Topic tags are stored lowercase for matching. The readiness card
-        // capitalises them for display and so must this, or the same topic
-        // appears to have two different names.
-        title={titleCase(topic) || 'Topic'}
-        subtitle={
-          all.length === 0
-            ? undefined
-            : `${right} of ${all.length} correct${courseCode ? ` · ${courseCode}` : ''}`
-        }
-        onBack={() => (router.canGoBack() ? router.back() : router.replace('/(tabs)/examprep'))}
-      />
+      <Animated.View style={headerStyle}>
+        <ScreenHeader
+          // Topic tags are stored lowercase for matching. The readiness card
+          // capitalises them for display and so must this, or the same topic
+          // appears to have two different names.
+          title={titleCase(topic) || 'Topic'}
+          subtitle={
+            all.length === 0
+              ? undefined
+              : `${right} of ${all.length} correct${courseCode ? ` · ${courseCode}` : ''}`
+          }
+          onBack={() => (router.canGoBack() ? router.back() : router.replace('/(tabs)/examprep'))}
+        />
+      </Animated.View>
 
       <ScrollView
         onScroll={edges.onScroll}

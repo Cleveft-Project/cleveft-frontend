@@ -5,9 +5,12 @@ import { Alert, Linking, ScrollView, StyleSheet, Switch, Text, View } from 'reac
 
 import { BASE_URL } from '@/api';
 import { Animated, staggeredEntrance } from '@/components/animated/entrance';
+import { ChangePasswordSheet } from '@/components/change-password-sheet';
+import { DeleteAccountSheet } from '@/components/delete-account-sheet';
 import { ScreenHeader, SectionHeader } from '@/components/headers';
 import { ScrollEdges, useScrollEdges } from '@/components/scroll-edges';
 import { Screen } from '@/components/screen';
+import { useCollapsingHeader } from '@/state/chrome-context';
 import { SettingsGroup, SettingsRow } from '@/components/settings-row';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { VoicePicker } from '@/components/voice-picker';
@@ -45,9 +48,14 @@ export default function SettingsScreen() {
 
   // Content dissolves into the top and bottom edges as it scrolls.
   const edges = useScrollEdges();
+  // Title shrinks and lifts as the page scrolls, matching every other
+  // scrolling screen in the app.
+  const headerStyle = useCollapsingHeader();
   const { voice, haptics } = useFeedback();
   const feel = useHaptics();
   const [pickingVoice, setPickingVoice] = useState(false);
+  const [changingPassword, setChangingPassword] = useState(false);
+  const [deletingAccount, setDeletingAccount] = useState(false);
   const { user, signOut } = useAuth();
 
   const openLink = (url: string) => {
@@ -74,7 +82,9 @@ export default function SettingsScreen() {
 
   return (
     <Screen edges={['top', 'bottom']}>
-      <ScreenHeader title="Settings" />
+      <Animated.View style={headerStyle}>
+        <ScreenHeader title="Settings" />
+      </Animated.View>
 
       <ScrollView
         onScroll={edges.onScroll}
@@ -146,6 +156,13 @@ export default function SettingsScreen() {
                 />
               }
             />
+            <SettingsRow
+              icon="notifications"
+              tone="accent"
+              title="Notifications"
+              subtitle="What Cleveft sends, and when"
+              onPress={() => router.push('/notifications')}
+            />
             {/* Only once he can be heard. A voice picker above a switch that is
                 off is a setting for something that does not happen. */}
             {voice.enabled ? (
@@ -172,6 +189,15 @@ export default function SettingsScreen() {
               onPress={() => router.push('/profile')}
             />
             <SettingsRow
+              icon="key"
+              title="Change password"
+              subtitle="Signs out every other device"
+              onPress={() => {
+                feel.tap();
+                setChangingPassword(true);
+              }}
+            />
+            <SettingsRow
               icon="sparkles"
               tone="violet"
               title="Plan"
@@ -188,6 +214,19 @@ export default function SettingsScreen() {
               subtitle={user?.email ?? undefined}
               destructive
               onPress={confirmSignOut}
+            />
+            {/* Last row of the last account section — the conventional place,
+                and far enough from anything routine that it is never a mistap. */}
+            <SettingsRow
+              icon="trash"
+              tone="danger"
+              title="Delete account"
+              subtitle="Removes everything, permanently"
+              destructive
+              onPress={() => {
+                feel.tap();
+                setDeletingAccount(true);
+              }}
             />
           </SettingsGroup>
         </Animated.View>
@@ -256,6 +295,16 @@ export default function SettingsScreen() {
       <ScrollEdges {...edges} />
 
       <VoicePicker visible={pickingVoice} onClose={() => setPickingVoice(false)} />
+
+      <ChangePasswordSheet
+        visible={changingPassword}
+        onClose={() => setChangingPassword(false)}
+      />
+
+      <DeleteAccountSheet
+        visible={deletingAccount}
+        onClose={() => setDeletingAccount(false)}
+      />
     </Screen>
   );
 }

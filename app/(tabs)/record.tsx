@@ -376,7 +376,16 @@ export default function RecordScreen() {
         // blob: URL, so there is no meaningful filename to take from it.
         baseName: 'lecture',
         mimeType: FALLBACK_MIME_TYPE,
-        title: title.trim() || `Lecture ${new Date().toLocaleDateString()}`,
+        /*
+         * No date in the name.
+         *
+         * Every card already prints when the lecture was recorded, so stamping
+         * it into the title says the same thing twice and pushes the actual
+         * subject onto a second line. The course code is the useful half of what
+         * a date was standing in for — it says which lecture this is, not merely
+         * which day it happened.
+         */
+        title: title.trim() || (courseCode.trim() ? `${courseCode.trim()} lecture` : 'Untitled lecture'),
         courseCode: courseCode.trim() || undefined,
         durationSeconds,
       });

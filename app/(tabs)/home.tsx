@@ -334,14 +334,24 @@ export default function HomeScreen() {
             </Text>
           </Animated.View>
 
+          {/* Achievements, not chat.
+
+              This slot used to open /chat — which is the third tab, permanently
+              on screen at the bottom, wearing the identical icon. A shortcut to
+              somewhere already one tap away costs the most valuable corner of
+              the home screen and returns nothing.
+
+              Achievements were the opposite problem: fifteen of them, and the
+              only way in was Profile, two screens deep. Top-right is where an
+              app that wants you to come back tomorrow puts them. */}
           <Pressable
-            onPress={() => router.push('/chat')}
+            onPress={() => router.push('/achievements')}
             hitSlop={10}
             style={styles.headerAction}
             accessibilityRole="button"
-            accessibilityLabel="Ask your lectures"
+            accessibilityLabel="Your achievements"
           >
-            <Ionicons name="chatbubble-ellipses-outline" size={18} color={colors.text} />
+            <Ionicons name="trophy-outline" size={18} color={colors.warning} />
           </Pressable>
         </View>
 

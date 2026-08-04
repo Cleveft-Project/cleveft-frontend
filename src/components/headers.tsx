@@ -131,7 +131,12 @@ export function SectionHeader({
   // and just wants the header to advertise it.
   const body = (
     <>
-      <Text style={styles.sectionTitle}>{title}</Text>
+      {/* One line, always. If the row ever does hand this less width than the
+          title needs, an ellipsis says so plainly — a silently dropped last
+          word looks like the copy was written wrong. */}
+      <Text style={styles.sectionTitle} numberOfLines={1}>
+        {title}
+      </Text>
       {action ? (
         <View style={styles.sectionActionRow}>
           <Text style={styles.sectionAction}>{action}</Text>
@@ -214,6 +219,18 @@ const createStyles = (c: Palette) => StyleSheet.create({
   sectionTitle: {
     ...typography.heading,
     color: c.text,
+    /*
+     * Given the row's width outright, rather than measuring its own.
+     *
+     * `flex: 1`, not `flexShrink: 1` — the difference is the whole bug. Shrink
+     * only permits the Text to be *smaller* than its content, which is the
+     * wrong direction: Android sized it to content, the measurement of a
+     * negatively-tracked font came up a word short, and "Your library" rendered
+     * as "Your". Growing it to fill the row means the intrinsic measurement
+     * never decides what fits, and any sibling action still sits right because
+     * this claims only the space left over.
+     */
+    flex: 1,
   },
   sectionPressed: {
     opacity: 0.6,
@@ -222,6 +239,8 @@ const createStyles = (c: Palette) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 2,
+    // Keeps "See all" intact now that the title grows to fill the row.
+    flexShrink: 0,
   },
   sectionAction: {
     ...typography.caption,

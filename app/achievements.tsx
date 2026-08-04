@@ -19,6 +19,7 @@ import { CountUp } from '@/components/count-up';
 import { ScreenHeader } from '@/components/headers';
 import { ScrollEdges, useScrollEdges } from '@/components/scroll-edges';
 import { Screen } from '@/components/screen';
+import { useCollapsingHeader } from '@/state/chrome-context';
 import { useAsync } from '@/hooks/use-async';
 import {
   buildAchievements,
@@ -49,6 +50,12 @@ export default function AchievementsScreen() {
   const haptics = useHaptics();
 
   const edges = useScrollEdges();
+
+  // Title shrinks and lifts as the page scrolls, matching every other
+
+  // scrolling screen in the app.
+
+  const headerStyle = useCollapsingHeader();
   const [filter, setFilter] = useState<Filter>('all');
 
   const lectures = useAsync(() => lecturesApi.list(), []);
@@ -86,11 +93,13 @@ export default function AchievementsScreen() {
 
   return (
     <Screen edges={['top', 'bottom']} blob="violet">
-      <ScreenHeader
-        title="Achievements"
-        subtitle={`${earned} of ${all.length} unlocked`}
-        onBack={() => (router.canGoBack() ? router.back() : router.replace('/profile'))}
-      />
+      <Animated.View style={headerStyle}>
+        <ScreenHeader
+          title="Achievements"
+          subtitle={`${earned} of ${all.length} unlocked`}
+          onBack={() => (router.canGoBack() ? router.back() : router.replace('/profile'))}
+        />
+      </Animated.View>
 
       {/* Overall progress, above the filters, because it describes all of them
           rather than whichever is selected. */}

@@ -1,6 +1,7 @@
+import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useMemo, useState } from 'react';
-import { ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { lecturesApi } from '@/api';
 import { Animated, staggeredEntrance } from '@/components/animated/entrance';
@@ -69,6 +70,8 @@ export default function LibraryScreen() {
 
       <Animated.View style={headerStyle}>
         <View style={styles.searchWrap}>
+          <View style={styles.searchField}>
+            <Ionicons name="search" size={17} color={colors.textMuted} />
           <TextInput
             value={query}
             onChangeText={setQuery}
@@ -79,6 +82,19 @@ export default function LibraryScreen() {
             autoCorrect={false}
             returnKeyType="search"
           />
+          {/* Only once there is something to clear. A permanent × on an empty
+              field is a control that does nothing most of the time. */}
+          {query.length > 0 ? (
+            <Pressable
+              onPress={() => setQuery('')}
+              hitSlop={10}
+              accessibilityRole="button"
+              accessibilityLabel="Clear search"
+            >
+              <Ionicons name="close-circle" size={17} color={colors.textMuted} />
+            </Pressable>
+            ) : null}
+          </View>
         </View>
       </Animated.View>
 
@@ -156,13 +172,32 @@ const createStyles = (c: Palette) => StyleSheet.create({
     paddingHorizontal: spacing.xl,
     paddingBottom: spacing.lg,
   },
-  search: {
+  /*
+   * The pill moved off the input and onto this row, because the input is no
+   * longer the only thing in it. A magnifying glass is what tells you a field
+   * is a search field before you have read the placeholder.
+   */
+  searchField: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
     paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
     borderRadius: radius.pill,
-    backgroundColor: c.surfaceSunken,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: c.borderMuted,
+    /*
+     * White on the page, not sunken into it.
+     *
+     * `surfaceSunken` is #EBF1F4 against a #F4F7F9 background — nine points of
+     * difference, which is not a visible edge. The lecture cards below read
+     * clearly because they are white with a soft border, so the search field
+     * uses the same treatment rather than inventing a third one.
+     */
+    backgroundColor: c.surface,
+    borderWidth: 1,
+    borderColor: c.border,
+  },
+  search: {
+    flex: 1,
+    paddingVertical: spacing.md,
     ...typography.body,
     color: c.text,
   },
