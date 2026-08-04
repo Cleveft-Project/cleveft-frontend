@@ -28,6 +28,20 @@ export function useHaptics() {
         }
       },
 
+      /**
+       * A value passing under a picker — one notch of a wheel.
+       *
+       * The platform's own selection feedback rather than a light impact, and
+       * the distinction matters here: this fires once per row while a finger is
+       * moving, so it has to be the lightest thing the device can do. A `tap`
+       * repeated sixty times down a minute column is not a dial, it is a buzz.
+       */
+      tick: () => {
+        if (on) {
+          void Haptics.selectionAsync().catch(() => {});
+        }
+      },
+
       /** Something completed. Firmer than a tap, still not an event. */
       commit: () => {
         if (on) {

@@ -22,6 +22,7 @@ import type {
   PeerSummary,
   Plan,
   PlanUsage,
+  NotificationSettings,
   Quiz,
   Readiness,
   TopicAnswer,
@@ -100,6 +101,57 @@ export const authApi = {
       body: input,
       anonymous: true,
     });
+  },
+
+  /**
+   * Changes the password from inside the account.
+   *
+   * Requires the current one — the threat is an unlocked phone, not a guessed
+   * token, and being signed in is not proof of being the owner.
+   */
+  changePassword(input: { currentPassword: string; newPassword: string }) {
+    return request<void>('/api/auth/me/password', { method: 'POST', body: input });
+  },
+
+  /** Announces this phone so it can receive pushes. Safe to repeat. */
+  registerDevice(input: { token: string; platform: string; timezone?: string }) {
+    return request<void>('/api/auth/me/devices', { method: 'POST', body: input });
+  },
+
+  /** Stops pushes to this one phone. Other devices keep theirs. */
+  unregisterDevice(token: string) {
+    return request<void>(`/api/auth/me/devices?token=${encodeURIComponent(token)}`, {
+      method: 'DELETE',
+    });
+  },
+
+  notificationSettings() {
+    return request<NotificationSettings>('/api/auth/me/notifications');
+  },
+
+  /**
+   * Saves the whole settings object and returns what the server stored.
+   *
+   * Whole rather than per-field: every toggle is visible at once, so the
+   * student's intent is all of them together. The response is the saved state,
+   * because defaults get substituted for anything malformed and a switch that
+   * silently did not take is worse than one that visibly snaps back.
+   */
+  updateNotificationSettings(settings: NotificationSettings) {
+    return request<NotificationSettings>('/api/auth/me/notifications', {
+      method: 'PUT',
+      body: settings,
+    });
+  },
+
+  /**
+   * Deletes the account and everything behind it. Irreversible.
+   *
+   * POST rather than DELETE, and password-confirmed, so a retried or mis-fired
+   * request cannot destroy a semester of work.
+   */
+  deleteAccount(password: string) {
+    return request<void>('/api/auth/me/delete', { method: 'POST', body: { password } });
   },
 
   /**

@@ -32,6 +32,7 @@ import { useAsync } from '@/hooks/use-async';
 import { coursesFromLectures } from '@/lib/courses';
 import { useLectureProgress } from '@/hooks/use-lecture-progress';
 import { useCollapsingHeader } from '@/state/chrome-context';
+import { useNotifications } from '@/state/notifications-context';
 import { radius, spacing, typography, useTheme, useThemedStyles, type Palette } from '@/theme';
 
 /** Named TranscriptTab, not View — `View` is already the RN component here. */
@@ -49,6 +50,7 @@ export default function TranscriptScreen() {
   const compactStyle = useCollapsingHeader({ scale: 0, fade: 0, lift: 12 });
   const params = useLocalSearchParams<{ lectureId?: string }>();
   const lectureId = typeof params.lectureId === 'string' ? params.lectureId : null;
+  const { askPermission } = useNotifications();
 
   const lecture = useAsync(
     () => lecturesApi.get(lectureId as string),
@@ -93,6 +95,24 @@ export default function TranscriptScreen() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [progress?.terminal]);
+
+  /*
+   * The moment to ask about notifications.
+   *
+   * A student who has just watched a lecture finish knows exactly what the
+   * permission is for — they waited for this. Asking at launch instead means
+   * asking before Cleveft has done anything, which is how an app collects a
+   * "no" it can never undo without sending someone into system settings.
+   *
+   * Only after a job the student actually watched complete, and askPermission
+   * itself never re-prompts once the OS has an answer.
+   */
+  useEffect(() => {
+    if (progress?.terminal && lecture.data?.status === 'COMPLETED') {
+      void askPermission();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [progress?.terminal, lecture.data?.status]);
 
   if (!lectureId) {
     return (

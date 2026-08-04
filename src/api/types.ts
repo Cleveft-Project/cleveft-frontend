@@ -448,3 +448,30 @@ export interface SharedThread {
   ownedByMe: boolean;
   createdAt: string;
 }
+
+/**
+ * Which pushes a student wants.
+ *
+ * Mirrors the JSONB column on the server, key for key. Every field is required
+ * here even though the server fills in defaults for missing ones — the settings
+ * screen renders a switch per field, and an optional boolean would render as
+ * "off" while the server considers it on.
+ */
+export interface NotificationPrefs {
+  lectureReady: boolean;
+  pathAdopted: boolean;
+  peerRequest: boolean;
+  dailyReminder: boolean;
+  /** "HH:mm" in the student's own timezone. */
+  dailyReminderAt: string;
+  circleActivity: boolean;
+  weeklySummary: boolean;
+  quietHoursFrom: string;
+  quietHoursTo: string;
+}
+
+export interface NotificationSettings {
+  prefs: NotificationPrefs;
+  /** IANA name, e.g. "Africa/Accra". */
+  timezone: string;
+}

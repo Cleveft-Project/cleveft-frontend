@@ -11,6 +11,7 @@ import React, {
 import { authApi, setSessionExpiredHandler } from '@/api';
 import { tokenStore } from '@/api/tokens';
 import type { User } from '@/api/types';
+import { unregisterDevice } from '@/lib/notifications';
 
 interface AuthState {
   user: User | null;
@@ -118,6 +119,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signOut = useCallback(async () => {
     const session = await tokenStore.load();
+
+    // Before the tokens go, while the call can still authenticate. This matters
+    // most on a shared or borrowed phone: leaving the device registered would
+    // send this student's lectures to whoever signs in next.
+    await unregisterDevice();
 
     // Revoke server-side first, but never let a failed call strand the user in
     // a signed-in shell they asked to leave.

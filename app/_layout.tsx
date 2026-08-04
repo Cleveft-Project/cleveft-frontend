@@ -12,6 +12,7 @@ import { SplashOverlay } from '@/components/splash-overlay';
 import { AuthProvider, useAuth } from '@/state/auth-context';
 import { ChromeProvider } from '@/state/chrome-context';
 import { FeedbackProvider } from '@/state/feedback-context';
+import { NotificationsProvider } from '@/state/notifications-context';
 import { ThemeProvider, useTheme, useThemedStyles, type Palette } from '@/theme';
 
 /**
@@ -62,12 +63,22 @@ function AuthGate({ children }: { children: React.ReactNode }) {
 
     const inAuthGroup = segments[0] === '(auth)';
 
+    /*
+     * Setup is the one screen in this group meant for someone signed in.
+     *
+     * It runs immediately after sign-up, so the account exists by the time it
+     * opens — and without this exemption the gate would eject them to home the
+     * instant registration succeeded, which is exactly when the screen is
+     * supposed to appear.
+     */
+    const onSetup = segments[1] === 'setup';
+
     if (!isAuthenticated && !inAuthGroup) {
       // Must match app/index.tsx. These two both decide where a signed-out
       // visitor goes, and when they disagreed they fired competing navigations
       // on the same launch.
       router.replace('/onboarding');
-    } else if (isAuthenticated && inAuthGroup) {
+    } else if (isAuthenticated && inAuthGroup && !onSetup) {
       router.replace('/home');
     }
   }, [isAuthenticated, isBootstrapping, segments, router]);
@@ -124,6 +135,7 @@ function RootShell() {
           <Stack.Screen name="quiz" options={{ animation: 'slide_from_bottom' }} />
           <Stack.Screen name="profile" options={{ animation: 'slide_from_right' }} />
           <Stack.Screen name="settings" options={{ animation: 'slide_from_right' }} />
+          <Stack.Screen name="notifications" options={{ animation: 'slide_from_right' }} />
           <Stack.Screen name="upgrade" options={{ animation: 'slide_from_bottom' }} />
         </Stack>
       </AuthGate>
@@ -148,9 +160,14 @@ function ThemedRoot() {
       <SafeAreaProvider>
         <AuthProvider>
           <FeedbackProvider>
-            <ChromeProvider>
-              <RootShell />
-            </ChromeProvider>
+            {/* Inside AuthProvider because it registers this device against
+                whoever is signed in, and above the router so a tapped
+                notification has somewhere to navigate to. */}
+            <NotificationsProvider>
+              <ChromeProvider>
+                <RootShell />
+              </ChromeProvider>
+            </NotificationsProvider>
           </FeedbackProvider>
         </AuthProvider>
       </SafeAreaProvider>
