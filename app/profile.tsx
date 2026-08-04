@@ -1,5 +1,5 @@
 import { useFocusEffect, useRouter } from 'expo-router';
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { ApiError, authApi, examPrepApi, lecturesApi } from '@/api';
@@ -10,6 +10,7 @@ import { GlassCard } from '@/components/glass-card';
 import { RoundButton, ScreenHeader, SectionHeader } from '@/components/headers';
 import { Kofi } from '@/components/kofi';
 import { NeonButton } from '@/components/neon-button';
+import { CourseEditor } from '@/components/peers/course-editor';
 import { ScrollEdges, useScrollEdges } from '@/components/scroll-edges';
 import { Screen } from '@/components/screen';
 import { TextField } from '@/components/text-field';
@@ -58,10 +59,26 @@ export default function ProfileScreen() {
   const [fullName, setFullName] = useState(user?.fullName ?? '');
   const [university, setUniversity] = useState(user?.university ?? '');
   const [programme, setProgramme] = useState(user?.programme ?? '');
+  const [courses, setCourses] = useState<string[]>(user?.courses ?? []);
 
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  /*
+   * Reseed the course list when the user record arrives.
+   *
+   * The form initialises from `user` at mount, but this screen can render
+   * before auth has finished hydrating — in which case the list starts empty
+   * and saving would send an empty array, which the server reads as "I take no
+   * courses" and wipes them. The text fields have the same shape of bug, but
+   * losing a list of eight course codes is worse than re-typing a name.
+   */
+  useEffect(() => {
+    if (user?.courses) {
+      setCourses(user.courses);
+    }
+  }, [user?.courses]);
 
   const save = async () => {
     setSaving(true);
@@ -72,6 +89,7 @@ export default function ProfileScreen() {
         fullName: fullName.trim(),
         university: university.trim(),
         programme: programme.trim(),
+        courses,
       });
       updateUser(updated);
       setSaved(true);
@@ -153,8 +171,24 @@ export default function ProfileScreen() {
           </Card>
         </Animated.View>
 
+        {/* Above the upgrade prompt on purpose: what the student has earned
+            should come before what they could buy. */}
+        <Animated.View entering={staggeredEntrance(2)}>
+          <Card onPress={() => router.push('/achievements')} style={styles.upgrade}>
+            <View style={styles.upgradeText}>
+              <Text style={styles.upgradeTitle}>Achievements</Text>
+              <Text style={styles.upgradeCopy}>
+                What you have earned, and what is nearly within reach.
+              </Text>
+            </View>
+            <View style={styles.upgradeChevron}>
+              <Text style={styles.upgradeArrow}>→</Text>
+            </View>
+          </Card>
+        </Animated.View>
+
         {!isPro ? (
-          <Animated.View entering={staggeredEntrance(2)}>
+          <Animated.View entering={staggeredEntrance(3)}>
             <Card onPress={() => router.push('/upgrade')} style={styles.upgrade}>
               <View style={styles.upgradeText}>
                 <Text style={styles.upgradeTitle}>Go unlimited</Text>
@@ -169,7 +203,7 @@ export default function ProfileScreen() {
           </Animated.View>
         ) : null}
 
-        <Animated.View entering={staggeredEntrance(3)}>
+        <Animated.View entering={staggeredEntrance(4)}>
           <SectionHeader title="Details" />
           <GlassCard>
             <View style={styles.form}>
@@ -193,6 +227,11 @@ export default function ProfileScreen() {
                 placeholder="Add your programme"
                 autoCapitalize="words"
               />
+
+              {/* Last in the form, because it is the only field that does
+                  something beyond describing you — it is what lets Cleveft
+                  introduce you to the people in those rooms. */}
+              <CourseEditor courses={courses} onChange={setCourses} editable={!saving} />
             </View>
 
             {error ? <Text style={styles.error}>{error}</Text> : null}
@@ -207,7 +246,7 @@ export default function ProfileScreen() {
           </GlassCard>
         </Animated.View>
 
-        <Animated.View entering={staggeredEntrance(4)}>
+        <Animated.View entering={staggeredEntrance(5)}>
           <NeonButton label="Sign out" onPress={signOut} variant="danger" style={styles.signOut} />
         </Animated.View>
       </ScrollView>
