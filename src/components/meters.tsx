@@ -1,5 +1,6 @@
+import { Ionicons } from '@expo/vector-icons';
 import React, { useEffect } from 'react';
-import { StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
+import { Pressable, StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -134,10 +135,20 @@ export function TopicBar({
   topic,
   percent,
   detail,
+  onPress,
 }: {
   topic: string;
   percent: number;
   detail?: string;
+  /**
+   * Opens the questions behind the number.
+   *
+   * A percentage is a verdict and stops the conversation; the questions are the
+   * way back into the material. Where a row can be opened it gains a chevron,
+   * because a tappable row that looks identical to a static one is a control
+   * nobody finds.
+   */
+  onPress?: () => void;
 }) {
   const { colors } = useTheme();
   const styles = useThemedStyles(createStyles);
@@ -150,13 +161,16 @@ export function TopicBar({
   const fillTone =
     clamped >= 80 ? colors.accentVivid : clamped >= 60 ? colors.warning : colors.danger;
 
-  return (
+  const body = (
     <View style={styles.topicRow}>
       <View style={styles.topicHeader}>
         <Text style={styles.topicName} numberOfLines={1}>
           {topic}
         </Text>
         <Text style={[styles.topicPercent, { color: textTone }]}>{clamped}%</Text>
+        {onPress ? (
+          <Ionicons name="chevron-forward" size={14} color={colors.textMuted} />
+        ) : null}
       </View>
 
       <View style={styles.topicTrack}>
@@ -165,6 +179,21 @@ export function TopicBar({
 
       {detail ? <Text style={styles.topicDetail}>{detail}</Text> : null}
     </View>
+  );
+
+  if (!onPress) {
+    return body;
+  }
+
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={`${topic}, ${clamped} percent. See the questions.`}
+      style={({ pressed }) => (pressed ? { opacity: 0.6 } : undefined)}
+    >
+      {body}
+    </Pressable>
   );
 }
 

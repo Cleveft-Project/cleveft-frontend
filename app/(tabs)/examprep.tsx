@@ -146,6 +146,19 @@ export default function ExamPrepScreen() {
                   onOpenLecture={(lectureId) =>
                     router.push(`/transcript?lectureId=${lectureId}`)
                   }
+                  // Scoped to the course, so a topic name shared by two courses
+                  // does not return the wrong course's questions.
+                  // The course code is omitted entirely when there is none —
+                  // sending an empty string normalises to UNGROUPED server-side
+                  // and would filter to exactly the wrong set.
+                  onOpenTopic={(topic) =>
+                    router.push(
+                      `/topic?topic=${encodeURIComponent(topic)}`
+                      + (course.courseCode
+                        ? `&courseCode=${encodeURIComponent(course.courseCode)}`
+                        : ''),
+                    )
+                  }
                 />
               ))}
             </View>

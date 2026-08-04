@@ -14,6 +14,13 @@ interface CourseReadinessCardProps {
   onQuizCourse: (courseCode: string) => void;
   /** Open a lecture's transcript. */
   onOpenLecture: (lectureId: string) => void;
+  /**
+   * Open the questions behind a topic's percentage.
+   *
+   * A callback rather than navigation in here, matching the two above — this
+   * component renders readiness and knows nothing about routes.
+   */
+  onOpenTopic: (topic: string) => void;
   /** True while a quiz for this course is being written. */
   quizzing?: boolean;
 }
@@ -35,6 +42,7 @@ export function CourseReadinessCard({
   index,
   onQuizCourse,
   onOpenLecture,
+  onOpenTopic,
   quizzing = false,
 }: CourseReadinessCardProps) {
   const styles = useThemedStyles(createStyles);
@@ -146,6 +154,7 @@ export function CourseReadinessCard({
                       detail={`${topic.attempts} quiz ${
                         topic.attempts === 1 ? 'answer' : 'answers'
                       }`}
+                      onPress={() => onOpenTopic(topic.topic)}
                     />
                   ))}
                 </View>
@@ -164,6 +173,7 @@ export function CourseReadinessCard({
                       detail={`${topic.attempts} quiz ${
                         topic.attempts === 1 ? 'answer' : 'answers'
                       }`}
+                      onPress={() => onOpenTopic(topic.topic)}
                     />
                   ))}
                 </View>
