@@ -63,7 +63,10 @@ function AuthGate({ children }: { children: React.ReactNode }) {
     const inAuthGroup = segments[0] === '(auth)';
 
     if (!isAuthenticated && !inAuthGroup) {
-      router.replace('/welcome');
+      // Must match app/index.tsx. These two both decide where a signed-out
+      // visitor goes, and when they disagreed they fired competing navigations
+      // on the same launch.
+      router.replace('/onboarding');
     } else if (isAuthenticated && inAuthGroup) {
       router.replace('/home');
     }
@@ -114,6 +117,8 @@ function RootShell() {
           <Stack.Screen name="index" />
           <Stack.Screen name="(auth)" />
           <Stack.Screen name="(tabs)" />
+          <Stack.Screen name="achievements" options={{ animation: 'slide_from_right' }} />
+          <Stack.Screen name="topic" options={{ animation: 'slide_from_right' }} />
           <Stack.Screen name="library" options={{ animation: 'slide_from_right' }} />
           <Stack.Screen name="transcript" options={{ animation: 'slide_from_right' }} />
           <Stack.Screen name="quiz" options={{ animation: 'slide_from_bottom' }} />

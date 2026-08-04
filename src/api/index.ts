@@ -16,12 +16,15 @@ import type {
   LectureExamPrep,
   LectureSummary,
   LibraryStats,
+  Leaderboard,
   Peer,
   PeerSearchResult,
+  PeerSummary,
   Plan,
   PlanUsage,
   Quiz,
   Readiness,
+  TopicAnswer,
   SharedThread,
   User,
   Visibility,
@@ -67,7 +70,57 @@ export const authApi = {
     return request<User>('/api/auth/me');
   },
 
-  updateProfile(input: { fullName?: string; university?: string; programme?: string }) {
+  /**
+   * Asks for a reset code.
+   *
+   * Succeeds whether or not the address has an account — the server will not
+   * say, because answering differently would let anyone test which addresses
+   * are registered. The screen has to word itself accordingly.
+   */
+  forgotPassword(email: string) {
+    return request<void>('/api/auth/forgot-password', {
+      method: 'POST',
+      body: { email },
+      anonymous: true,
+    });
+  },
+
+  /** Checks a code without spending it, so the code screen can fail fast. */
+  verifyCode(input: { email: string; code: string }) {
+    return request<void>('/api/auth/verify-code', {
+      method: 'POST',
+      body: input,
+      anonymous: true,
+    });
+  },
+
+  resetPassword(input: { email: string; code: string; newPassword: string }) {
+    return request<void>('/api/auth/reset-password', {
+      method: 'POST',
+      body: input,
+      anonymous: true,
+    });
+  },
+
+  /**
+   * Students taking the same course.
+   *
+   * The way people are found here. Searching by name only works if you already
+   * know who to look for.
+   */
+  peersByCourse(code: string) {
+    return request<PeerSummary[]>(
+      `/api/auth/peers/by-course?code=${encodeURIComponent(code)}`,
+    );
+  },
+
+  updateProfile(input: {
+    fullName?: string;
+    university?: string;
+    programme?: string;
+    /** The whole set. Omit to leave courses untouched. */
+    courses?: string[];
+  }) {
     return request<User>('/api/auth/me', { method: 'PATCH', body: input });
   },
 
@@ -301,6 +354,20 @@ export const examPrepApi = {
     return request<Readiness>('/api/v1/examprep/readiness');
   },
 
+  /**
+   * The questions asked on one topic, and how they were answered.
+   *
+   * What a mastery percentage cannot show. `courseCode` scopes it, so a topic
+   * opened from one course does not return answers from another that happened
+   * to use the same tag.
+   */
+  topicAnswers(topic: string, courseCode?: string) {
+    const query = courseCode ? `?courseCode=${encodeURIComponent(courseCode)}` : '';
+    return request<TopicAnswer[]>(
+      `/api/v1/examprep/readiness/topics/${encodeURIComponent(topic)}/answers${query}`,
+    );
+  },
+
   /** Readiness, weak areas and blind spots for one lecture. */
   lectureReadiness(lectureId: string) {
     return request<LectureExamPrep>(`/api/v1/examprep/readiness/lectures/${lectureId}`);
@@ -318,6 +385,18 @@ export const examPrepApi = {
 };
 
 export const collabApi = {
+  /**
+   * This week's effort, ranked, among everyone taking a course.
+   *
+   * Effort — lectures, quizzes, questions — never results. Nothing here reveals
+   * how well anyone is doing.
+   */
+  leaderboard(courseCode: string) {
+    return request<Leaderboard>(
+      `/api/v1/collab/leaderboard?courseCode=${encodeURIComponent(courseCode)}`,
+    );
+  },
+
   peers() {
     return request<Peer[]>('/api/v1/collab/peers');
   },

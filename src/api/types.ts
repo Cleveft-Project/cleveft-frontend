@@ -17,6 +17,8 @@ export interface User {
   role: string;
   university?: string | null;
   programme?: string | null;
+  /** Normalised course codes, e.g. ["CSM266", "PHY150"]. */
+  courses?: string[];
   plan: Plan;
   /** Null on Free, and null on a Pro subscription that does not expire. */
   planRenewsAt?: string | null;
@@ -311,6 +313,26 @@ export interface Readiness {
   courses: CourseReadiness[];
 }
 
+/**
+ * One question asked on a topic, with the answer that was given.
+ *
+ * Assembled server-side from the attempt (what was chosen) and the quiz (what
+ * was asked) — neither holds both.
+ */
+export interface TopicAnswer {
+  questionId: string;
+  prompt: string;
+  options: string[];
+  /** Null when the question was left unanswered. */
+  selectedIndex?: number | null;
+  correctIndex?: number | null;
+  correct: boolean;
+  explanation?: string | null;
+  lectureId?: string | null;
+  quizTitle?: string | null;
+  answeredAt: string;
+}
+
 export interface ExamSummary {
   id: string;
   lectureId: string;
@@ -335,6 +357,45 @@ export interface Peer {
   status: PeerStatus;
   direction: 'INCOMING' | 'OUTGOING';
   since: string;
+}
+
+/**
+ * Someone else's public profile, as the auth service exposes it.
+ *
+ * Course codes are public here on purpose — they are what lets one student see
+ * another is in the same class. Nothing about anyone's recordings or results is
+ * included.
+ */
+export interface PeerSummary {
+  id: string;
+  fullName: string;
+  email?: string | null;
+  university?: string | null;
+  programme?: string | null;
+  courses: string[];
+}
+
+/** One student's week on a course leaderboard. */
+export interface LeaderboardEntry {
+  userId: string;
+  fullName: string;
+  rank: number;
+  points: number;
+  lectures: number;
+  quizzes: number;
+  questions: number;
+  /** Pin and highlight this row. */
+  isMe: boolean;
+}
+
+export interface Leaderboard {
+  courseCode: string;
+  weekStart: string;
+  /** When the board clears. Shown as a countdown. */
+  resetsAt: string;
+  /** The cohort's middle score, so a middling rank can be read honestly. */
+  median: number;
+  entries: LeaderboardEntry[];
 }
 
 export interface PeerSearchResult {
