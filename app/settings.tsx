@@ -1,6 +1,7 @@
+import Constants from 'expo-constants';
 import { useRouter } from 'expo-router';
-import React from 'react';
-import { ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
+import React, { useState } from 'react';
+import { Alert, Linking, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 
 import { BASE_URL } from '@/api';
 import { Animated, staggeredEntrance } from '@/components/animated/entrance';
@@ -9,9 +10,25 @@ import { ScrollEdges, useScrollEdges } from '@/components/scroll-edges';
 import { Screen } from '@/components/screen';
 import { SettingsGroup, SettingsRow } from '@/components/settings-row';
 import { ThemeToggle } from '@/components/theme-toggle';
+import { VoicePicker } from '@/components/voice-picker';
 import { useHaptics } from '@/components/animated/haptics';
+import { useAuth } from '@/state/auth-context';
 import { useFeedback } from '@/state/feedback-context';
 import { spacing, typography, useTheme, useThemedStyles, type Palette } from '@/theme';
+
+/**
+ * Cleveft's version, read from the manifest rather than hard-coded.
+ *
+ * <p>A version string that has to be remembered when releasing is a version
+ * string that goes stale, and a stale one in a support email is worse than none
+ * — it sends whoever reads it looking at the wrong build.
+ */
+const VERSION = `${Constants.expoConfig?.version ?? '1.0.0'}`;
+
+const SUPPORT_EMAIL = 'support@cleveft.app';
+const TERMS_URL = 'https://cleveft.app/terms';
+const PRIVACY_URL = 'https://cleveft.app/privacy';
+const LICENCES_URL = 'https://cleveft.app/licences';
 
 /**
  * How the app behaves — and nothing about who the student is.
@@ -30,6 +47,30 @@ export default function SettingsScreen() {
   const edges = useScrollEdges();
   const { voice, haptics } = useFeedback();
   const feel = useHaptics();
+  const [pickingVoice, setPickingVoice] = useState(false);
+  const { user, signOut } = useAuth();
+
+  const openLink = (url: string) => {
+    feel.tap();
+    // Failures are swallowed: a device with no mail client is not something the
+    // student can act on, and an error dialog about it helps nobody.
+    void Linking.openURL(url).catch(() => {});
+  };
+
+  /*
+   * Confirmed, because signing out is not free here.
+   *
+   * Anything not yet uploaded is lost with the session, and the student has to
+   * find their password again to get back in. A single tap away from that, next
+   * to two harmless rows, is a trap.
+   */
+  const confirmSignOut = () => {
+    feel.tap();
+    Alert.alert('Sign out of Cleveft?', 'Your lectures stay safe. You will need to sign in again.', [
+      { text: 'Stay', style: 'cancel' },
+      { text: 'Sign out', style: 'destructive', onPress: () => void signOut() },
+    ]);
+  };
 
   return (
     <Screen edges={['top', 'bottom']}>
@@ -105,6 +146,18 @@ export default function SettingsScreen() {
                 />
               }
             />
+            {/* Only once he can be heard. A voice picker above a switch that is
+                off is a setting for something that does not happen. */}
+            {voice.enabled ? (
+              <SettingsRow
+                icon="mic"
+                tone="violet"
+                title="His voice"
+                subtitle="Choose the accent, and hear it first"
+                value={voice.id ? 'Chosen' : 'Automatic'}
+                onPress={() => setPickingVoice(true)}
+              />
+            ) : null}
           </SettingsGroup>
         </Animated.View>
 
@@ -124,6 +177,17 @@ export default function SettingsScreen() {
               title="Plan"
               subtitle="Recording limits and upgrades"
               onPress={() => router.push('/upgrade')}
+            />
+            {/* Sign out belongs here, not only on the profile screen. Settings
+                is the first place anyone looks for it, and not finding it reads
+                as the app trying to keep you. */}
+            <SettingsRow
+              icon="log-out"
+              tone="danger"
+              title="Sign out"
+              subtitle={user?.email ?? undefined}
+              destructive
+              onPress={confirmSignOut}
             />
           </SettingsGroup>
         </Animated.View>
@@ -145,6 +209,43 @@ export default function SettingsScreen() {
           </Text>
         </Animated.View>
 
+        {/* Last, and deliberately so. Nobody opens Settings to read the version
+            number, but everybody expects to find it at the bottom. */}
+        <Animated.View entering={staggeredEntrance(4)}>
+          <SectionHeader title="About" />
+          <SettingsGroup>
+            <SettingsRow
+              first
+              icon="information-circle"
+              title="Version"
+              value={VERSION}
+            />
+            <SettingsRow
+              icon="document-text"
+              title="Terms of service"
+              onPress={() => openLink(TERMS_URL)}
+            />
+            <SettingsRow
+              icon="lock-closed"
+              title="Privacy policy"
+              onPress={() => openLink(PRIVACY_URL)}
+            />
+            <SettingsRow
+              icon="code-slash"
+              title="Open-source licences"
+              subtitle="The libraries Cleveft is built on"
+              onPress={() => openLink(LICENCES_URL)}
+            />
+            <SettingsRow
+              icon="mail"
+              tone="violet"
+              title="Contact support"
+              subtitle="Tell us what broke, or what is missing"
+              onPress={() => openLink(`mailto:${SUPPORT_EMAIL}?subject=Cleveft%20${VERSION}`)}
+            />
+          </SettingsGroup>
+        </Animated.View>
+
         <View style={styles.footer}>
           <Text style={styles.footerText}>Cleveft</Text>
           <Text style={styles.footerHint}>Go back and get what you forgot.</Text>
@@ -153,6 +254,8 @@ export default function SettingsScreen() {
 
       {/* After the scroll view, so the fades paint over the content. */}
       <ScrollEdges {...edges} />
+
+      <VoicePicker visible={pickingVoice} onClose={() => setPickingVoice(false)} />
     </Screen>
   );
 }

@@ -175,6 +175,54 @@ async function preferredVoice(): Promise<string | undefined> {
 }
 
 /**
+ * Every English voice on the device, best locale first.
+ *
+ * <p>Android ships several voices per locale and they differ enormously — some
+ * are the modern neural ones, some are a decade old. Automatic selection takes
+ * the first match, which is a coin toss, so this exists to let the student hear
+ * them and choose. Non-English voices are filtered out: they can pronounce the
+ * words, but not in a way anyone would want to listen to.
+ */
+export async function availableVoices(): Promise<Speech.Voice[]> {
+  try {
+    const all = await Speech.getAvailableVoicesAsync();
+    const english = all.filter((voice) => voice.language?.toLowerCase().startsWith('en'));
+
+    return english.sort((a, b) => {
+      const rank = (voice: Speech.Voice) => {
+        const index = VOICE_PREFERENCE.findIndex((locale) =>
+          voice.language?.startsWith(locale),
+        );
+        // Unlisted locales sort after the preferred ones rather than being hidden
+        // — en-US is not the house accent, but it is better than silence on a
+        // device that has nothing else.
+        return index === -1 ? VOICE_PREFERENCE.length : index;
+      };
+      const byLocale = rank(a) - rank(b);
+      return byLocale !== 0 ? byLocale : (a.name ?? '').localeCompare(b.name ?? '');
+    });
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Speaks one line immediately, for previewing a choice.
+ *
+ * <p>A sentence long enough to judge a voice on. Two words is not enough to
+ * hear pace or where a voice puts its stress, which is what a student is
+ * actually choosing between.
+ */
+export function previewVoice(
+  voiceId: string | undefined,
+  rate: number,
+  line = "Hello, I'm Kofi. I'll help you remember your lectures.",
+) {
+  Speech.stop();
+  Speech.speak(line, { ...SPEECH, rate, voice: voiceId });
+}
+
+/**
  * Lines already spoken this run.
  *
  * Module-level rather than component state on purpose: it has to survive a
@@ -201,6 +249,8 @@ const spokenThisSession = new Set<string>();
 export function useKofiSpeech(line: string, active = true, onceKey?: string) {
   const { voice } = useFeedback();
   const enabled = voice.enabled;
+  const chosenId = voice.id ?? undefined;
+  const rate = voice.rate;
 
   useEffect(() => {
     if (!enabled || !active || !line) {
@@ -220,7 +270,13 @@ export function useKofiSpeech(line: string, active = true, onceKey?: string) {
         // Stop first: a student moving quickly between screens would otherwise
         // queue several lines and hear them played back to back.
         Speech.stop();
-        Speech.speak(line, { ...SPEECH, voice: await preferredVoice() });
+        // A chosen voice wins outright. Falling back to the locale guess only
+        // when the student has not picked one.
+        Speech.speak(line, {
+          ...SPEECH,
+          rate,
+          voice: chosenId ?? (await preferredVoice()),
+        });
       })();
     }, 420);
 
@@ -228,7 +284,7 @@ export function useKofiSpeech(line: string, active = true, onceKey?: string) {
       clearTimeout(timer);
       Speech.stop();
     };
-  }, [active, enabled, line, onceKey]);
+  }, [active, chosenId, enabled, line, onceKey, rate]);
 }
 
 interface KofiSaysProps {
