@@ -1,21 +1,39 @@
+import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
+import {
+  KeyboardAvoidingView,
+  Linking,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 
 import { ApiError } from '@/api';
+import { useHaptics } from '@/components/animated/haptics';
 import { ScreenHeader } from '@/components/headers';
 import { NeonButton } from '@/components/neon-button';
+import { PasswordStrength } from '@/components/password-strength';
 import { Screen } from '@/components/screen';
 import { TextField } from '@/components/text-field';
 import { useAuth } from '@/state/auth-context';
-import { spacing, typography, useThemedStyles, type Palette } from '@/theme';
+import { radius, spacing, typography, useTheme, useThemedStyles, type Palette } from '@/theme';
 
 const MIN_PASSWORD_LENGTH = 8;
 
+const TERMS_URL = 'https://cleveft.app/terms';
+const PRIVACY_URL = 'https://cleveft.app/privacy';
+
 export default function SignUpScreen() {
   const styles = useThemedStyles(createStyles);
+  const { colors } = useTheme();
   const router = useRouter();
+  const haptics = useHaptics();
   const { signUp } = useAuth();
+  const [agreed, setAgreed] = useState(false);
 
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
@@ -44,6 +62,9 @@ export default function SignUpScreen() {
     }
     if (password.length < MIN_PASSWORD_LENGTH) {
       errors.password = `At least ${MIN_PASSWORD_LENGTH} characters`;
+    }
+    if (!agreed) {
+      errors.agreed = 'Please accept the terms to continue';
     }
 
     setFieldErrors(errors);
@@ -98,7 +119,10 @@ export default function SignUpScreen() {
               value={fullName}
               onChangeText={setFullName}
               error={fieldErrors.fullName}
-              placeholder="Ama Mensah"
+              // Instructional rather than a sample person. A name in a
+              // placeholder gets read as a suggestion, and whichever name is
+              // chosen belongs to somebody.
+              placeholder="Your full name"
               autoCapitalize="words"
               autoComplete="name"
             />
@@ -108,23 +132,31 @@ export default function SignUpScreen() {
               value={email}
               onChangeText={setEmail}
               error={fieldErrors.email}
-              placeholder="you@university.edu"
+              // The real KNUST student format, so it reads as an example of the
+              // address they actually have rather than a generic one.
+              placeholder="you@st.knust.edu.gh"
               keyboardType="email-address"
               autoCapitalize="none"
               autoComplete="email"
             />
 
-            <TextField
-              label="PASSWORD"
-              value={password}
-              onChangeText={setPassword}
-              error={fieldErrors.password}
-              hint={`At least ${MIN_PASSWORD_LENGTH} characters`}
-              placeholder="Choose a password"
-              secure
-              autoCapitalize="none"
-              autoComplete="new-password"
-            />
+            <View>
+              <TextField
+                label="PASSWORD"
+                value={password}
+                onChangeText={setPassword}
+                error={fieldErrors.password}
+                hint={password ? undefined : `At least ${MIN_PASSWORD_LENGTH} characters`}
+                placeholder="Choose a password"
+                secure
+                autoCapitalize="none"
+                autoComplete="new-password"
+              />
+              {/* Replaces the hint once typing starts. A length rule tells you
+                  when you may proceed; it never tells you whether what you
+                  chose is any good, and "password1" clears it. */}
+              <PasswordStrength password={password} />
+            </View>
 
             <TextField
               label="UNIVERSITY (OPTIONAL)"
@@ -138,10 +170,42 @@ export default function SignUpScreen() {
               label="PROGRAMME (OPTIONAL)"
               value={programme}
               onChangeText={setProgramme}
-              placeholder="Computer Engineering"
+              placeholder="Computer Science"
               autoCapitalize="words"
             />
           </View>
+
+          {/* Unticked by default and required. A pre-ticked box is not consent,
+              and in several jurisdictions is not legally consent either. */}
+          <Pressable
+            onPress={() => {
+              haptics.tap();
+              setAgreed((previous) => !previous);
+              setFieldErrors((previous) => ({ ...previous, agreed: '' }));
+            }}
+            style={styles.agreeRow}
+            accessibilityRole="checkbox"
+            accessibilityState={{ checked: agreed }}
+          >
+            <View style={[styles.checkbox, agreed && styles.checkboxOn]}>
+              {agreed ? <Ionicons name="checkmark" size={14} color={colors.onFillPrimary} /> : null}
+            </View>
+            <Text style={styles.agreeText}>
+              I agree to Cleveft&apos;s{' '}
+              <Text style={styles.agreeLink} onPress={() => Linking.openURL(TERMS_URL)}>
+                Terms
+              </Text>{' '}
+              and{' '}
+              <Text style={styles.agreeLink} onPress={() => Linking.openURL(PRIVACY_URL)}>
+                Privacy Policy
+              </Text>
+              .
+            </Text>
+          </Pressable>
+
+          {fieldErrors.agreed ? (
+            <Text style={styles.formError}>{fieldErrors.agreed}</Text>
+          ) : null}
 
           {formError ? <Text style={styles.formError}>{formError}</Text> : null}
 
@@ -182,6 +246,36 @@ const createStyles = (c: Palette) => StyleSheet.create({
   formError: {
     ...typography.caption,
     color: c.danger,
+  },
+  agreeRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: spacing.md,
+    paddingRight: spacing.sm,
+  },
+  checkbox: {
+    width: 22,
+    height: 22,
+    borderRadius: radius.sm,
+    borderWidth: 1.5,
+    borderColor: c.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 1,
+  },
+  checkboxOn: {
+    backgroundColor: c.fillPrimary,
+    borderColor: c.fillPrimary,
+  },
+  agreeText: {
+    ...typography.caption,
+    color: c.textSecondary,
+    flex: 1,
+    lineHeight: 19,
+  },
+  agreeLink: {
+    color: c.accent,
+    fontWeight: '600',
   },
   submit: {
     marginTop: spacing.sm,

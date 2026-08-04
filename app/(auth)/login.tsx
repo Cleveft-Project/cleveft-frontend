@@ -1,6 +1,14 @@
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
+import {
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 
 import { ApiError } from '@/api';
 import { ScreenHeader } from '@/components/headers';
@@ -76,7 +84,7 @@ export default function LoginScreen() {
               value={email}
               onChangeText={setEmail}
               error={fieldErrors.email}
-              placeholder="you@university.edu"
+              placeholder="you@st.knust.edu.gh"
               keyboardType="email-address"
               autoCapitalize="none"
               autoComplete="email"
@@ -97,6 +105,18 @@ export default function LoginScreen() {
               returnKeyType="go"
             />
           </View>
+
+          {/* Directly under the password, which is where someone realises they
+              have forgotten it. Below the sign-in button they would try, fail,
+              and only then go looking. */}
+          <Pressable
+            onPress={() => router.push('/forgot-password')}
+            style={styles.forgot}
+            hitSlop={8}
+            accessibilityRole="button"
+          >
+            <Text style={styles.forgotText}>Forgot your password?</Text>
+          </Pressable>
 
           {formError ? <Text style={styles.formError}>{formError}</Text> : null}
 
@@ -137,6 +157,14 @@ const createStyles = (c: Palette) => StyleSheet.create({
   formError: {
     ...typography.caption,
     color: c.danger,
+  },
+  forgot: {
+    alignSelf: 'flex-end',
+    paddingVertical: spacing.xs,
+  },
+  forgotText: {
+    ...typography.caption,
+    color: c.accent,
   },
   submit: {
     marginTop: spacing.sm,

@@ -1,3 +1,4 @@
+import { Ionicons } from '@expo/vector-icons';
 import React, { useState } from 'react';
 import {
   Pressable,
@@ -65,6 +66,11 @@ export function TextField({
           {...rest}
         />
 
+        {/* An eye, not the words "Show"/"Hide".
+            The label had to change with the state, which meant the control
+            moved as it was pressed and read as a sentence rather than a button.
+            The eye is the convention everywhere else, so nobody has to work out
+            what it does. */}
         {secure ? (
           <Pressable
             onPress={() => setRevealed((previous) => !previous)}
@@ -72,7 +78,11 @@ export function TextField({
             accessibilityRole="button"
             accessibilityLabel={revealed ? 'Hide password' : 'Show password'}
           >
-            <Text style={styles.reveal}>{revealed ? 'Hide' : 'Show'}</Text>
+            <Ionicons
+              name={revealed ? 'eye-off-outline' : 'eye-outline'}
+              size={19}
+              color={colors.textMuted}
+            />
           </Pressable>
         ) : null}
       </View>

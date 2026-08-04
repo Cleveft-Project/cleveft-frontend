@@ -9,5 +9,8 @@ import { useAuth } from '@/state/auth-context';
  */
 export default function Index() {
   const { isAuthenticated } = useAuth();
-  return <Redirect href={isAuthenticated ? '/home' : '/welcome'} />;
+  // Onboarding rather than welcome for a signed-out visitor: its whole job is
+  // to convince someone who has not committed, so it has to come before the
+  // account, not after it.
+  return <Redirect href={isAuthenticated ? '/home' : '/onboarding'} />;
 }
