@@ -1,5 +1,5 @@
 import { useFocusEffect, useRouter, useScrollToTop } from 'expo-router';
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
 import {
   Pressable,
   RefreshControl,
@@ -25,15 +25,22 @@ import { formatRelativeDate } from '@/components/lecture-card';
 import { NeonButton } from '@/components/neon-button';
 import { ScrollEdges, useScrollEdges } from '@/components/scroll-edges';
 import { Screen } from '@/components/screen';
+import { Coursemates } from '@/components/peers/coursemates';
+import { Leaderboard } from '@/components/peers/leaderboard';
 import { useAsync } from '@/hooks/use-async';
+import { useAuth } from '@/state/auth-context';
 import { radius, spacing, typography, useTheme, useThemedStyles, type Palette } from '@/theme';
 
-type Tab = 'feed' | 'paths' | 'peers';
+type Tab = 'board' | 'feed' | 'paths' | 'peers';
 
+// Board first, and the default. It is the only tab whose contents change
+// whether or not anyone else acts, which makes it the one worth opening daily —
+// so it is what the tab lands on rather than something to be found.
 const TABS: { key: Tab; label: string }[] = [
+  { key: 'board', label: 'Board' },
   { key: 'feed', label: 'Feed' },
   { key: 'paths', label: 'Paths' },
-  { key: 'peers', label: 'Peers' },
+  { key: 'peers', label: 'People' },
 ];
 
 function PeerRow({
@@ -140,7 +147,8 @@ export default function CollabScreen() {
   const { colors } = useTheme();
   const styles = useThemedStyles(createStyles);
   const router = useRouter();
-  const [tab, setTab] = useState<Tab>('feed');
+  const { user } = useAuth();
+  const [tab, setTab] = useState<Tab>('board');
 
   // Tapping the tab you are already on returns you to the top of it.
   const scrollRef = useRef<ScrollView>(null);
@@ -196,6 +204,25 @@ export default function CollabScreen() {
     }
   };
 
+  /*
+   * Everyone already connected or already asked.
+   *
+   * Coursemate suggestions are filtered through this so a student is never
+   * offered someone they have just added — the list would otherwise keep
+   * showing them until the next reload, which reads as the button not working.
+   */
+  const connectedIds = useMemo(() => {
+    const ids = new Set<string>();
+    (peers.data ?? []).forEach((peer) => ids.add(peer.userId));
+    (incoming.data ?? []).forEach((peer) => ids.add(peer.userId));
+    (searchResults ?? []).forEach((result) => {
+      if (result.relationship !== 'NONE') {
+        ids.add(result.userId);
+      }
+    });
+    return ids;
+  }, [incoming.data, peers.data, searchResults]);
+
   const connect = async (userId: string) => {
     setBusyId(userId);
     setActionError(null);
@@ -239,8 +266,8 @@ export default function CollabScreen() {
   return (
     <Screen>
       <View style={styles.header}>
-        <Text style={styles.title}>Peers</Text>
-        <Text style={styles.subtitle}>Learn from how your course-mates figured it out</Text>
+        <Text style={styles.title}>Your circle</Text>
+        <Text style={styles.subtitle}>Learn from how your coursemates figured it out</Text>
       </View>
 
       <View style={styles.tabBar}>
@@ -278,6 +305,12 @@ export default function CollabScreen() {
       >
         {actionError ? <Text style={styles.error}>{actionError}</Text> : null}
 
+        {tab === 'board' ? (
+          <Animated.View key="board" entering={fadeEntrance()}>
+            <Leaderboard courses={user?.courses ?? []} />
+          </Animated.View>
+        ) : null}
+
         {tab === 'feed' ? (
           <Animated.View key="feed" entering={fadeEntrance()}>
             {feed.isLoading && !feed.data ? (
@@ -288,7 +321,7 @@ export default function CollabScreen() {
               <EmptyState
                 glyph="◉"
                 title="Your feed is quiet"
-                message="Connect with course-mates, then anything they share appears here — question, answer and the lecture it came from."
+                message="Connect with coursemates, then anything they share appears here — question, answer and the lecture it came from."
                 actionLabel="Find peers"
                 onAction={() => setTab('peers')}
               />
@@ -362,6 +395,18 @@ export default function CollabScreen() {
 
         {tab === 'peers' ? (
           <Animated.View key="peers" entering={fadeEntrance()}>
+            {/* Above search on purpose. Searching by name only helps someone who
+                already knows who to look for; this is the part that introduces
+                people who have never met. */}
+            <Coursemates
+              courses={user?.courses ?? []}
+              connectedIds={connectedIds}
+              onConnect={connect}
+              busyId={busyId}
+            />
+
+            <View style={styles.sectionGap} />
+
             <GlassCard>
               <Text style={styles.fieldLabel}>FIND A COURSE-MATE</Text>
               <View style={styles.searchRow}>
@@ -463,7 +508,7 @@ export default function CollabScreen() {
               <EmptyState
                 glyph="◉"
                 title="No connections yet"
-                message="Search for a course-mate above to start building your study network."
+                message="Search for a coursemate above to start building your study network."
               />
             ) : (
               <View style={styles.list}>
@@ -489,6 +534,9 @@ export default function CollabScreen() {
 }
 
 const createStyles = (c: Palette) => StyleSheet.create({
+  sectionGap: {
+    height: spacing.xl,
+  },
   header: {
     paddingHorizontal: spacing.xl,
     paddingTop: spacing.md,

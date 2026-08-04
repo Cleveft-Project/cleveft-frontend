@@ -36,6 +36,7 @@ import { ChatHistory } from '@/components/chat-history';
 import { FloatingPrompt } from '@/components/floating-prompt';
 import { Kofi } from '@/components/kofi';
 import { Markdown } from '@/components/markdown';
+import { SavePathSheet } from '@/components/peers/save-path-sheet';
 import { ScrollEdges, useScrollEdges } from '@/components/scroll-edges';
 import { useCollapsingHeader } from '@/state/chrome-context';
 import { useKofiLine, useKofiSpeech } from '@/components/kofi-says';
@@ -333,6 +334,8 @@ export default function ChatScreen() {
   const [sharingId, setSharingId] = useState<string | null>(null);
 
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [savingPath, setSavingPath] = useState(false);
+  const haptics = useHaptics();
   const [conversations, setConversations] = useState<ConversationSummary[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [loadingThread, setLoadingThread] = useState(false);
@@ -636,6 +639,24 @@ export default function ChatScreen() {
 
         <View style={styles.flexSpacer} />
 
+        {/* Only once there is something worth keeping. A conversation is a
+            learning path already — this names it rather than making the student
+            retype it. */}
+        {messages.length > 1 ? (
+          <Pressable
+            onPress={() => {
+              haptics.tap();
+              setSavingPath(true);
+            }}
+            hitSlop={10}
+            style={styles.roundButton}
+            accessibilityRole="button"
+            accessibilityLabel="Save this chat as a learning path"
+          >
+            <Ionicons name="git-branch-outline" size={19} color={colors.text} />
+          </Pressable>
+        ) : null}
+
         {messages.length > 0 ? (
           <Pressable
             onPress={startNewChat}
@@ -768,6 +789,14 @@ export default function ChatScreen() {
 
       {/* Above the composer, below the list. */}
       <ScrollEdges {...edges} />
+
+      <SavePathSheet
+        visible={savingPath}
+        onClose={() => setSavingPath(false)}
+        messages={messages}
+        suggestedTitle={conversations.find((item) => item.id === conversationId)?.title}
+        onSaved={() => setSavingPath(false)}
+      />
 
       {/* Rendered last so it layers over the composer and the list. */}
       <ChatHistory

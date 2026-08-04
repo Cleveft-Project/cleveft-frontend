@@ -38,7 +38,9 @@ const TABS = [
     iconOutline: 'chatbubble-ellipses-outline',
   },
   { name: 'examprep', title: 'Exams', icon: 'school', iconOutline: 'school-outline' },
-  { name: 'collab', title: 'Peers', icon: 'people', iconOutline: 'people-outline' },
+  // "Circle" rather than "Peers": the word a student would say out loud, and
+  // the thing the group actually is. "Peers" is what a specification calls it.
+  { name: 'collab', title: 'Circle', icon: 'people', iconOutline: 'people-outline' },
 ] as const;
 
 /**
