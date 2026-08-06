@@ -438,7 +438,13 @@ const createStyles = (c: Palette) => StyleSheet.create({
     justifyContent: 'center',
   },
   burst: {
-    ...StyleSheet.absoluteFillObject,
+    // Written out rather than spread from StyleSheet.absoluteFillObject, which
+    // React Native no longer declares on the StyleSheet type.
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
     alignItems: 'center',
     justifyContent: 'center',
   },

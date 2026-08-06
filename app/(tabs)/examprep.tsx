@@ -152,12 +152,12 @@ export default function ExamPrepScreen() {
                   // sending an empty string normalises to UNGROUPED server-side
                   // and would filter to exactly the wrong set.
                   onOpenTopic={(topic) =>
-                    router.push(
-                      `/topic?topic=${encodeURIComponent(topic)}`
-                      + (course.courseCode
-                        ? `&courseCode=${encodeURIComponent(course.courseCode)}`
-                        : ''),
-                    )
+                    router.push({
+                      pathname: '/topic',
+                      params: course.courseCode
+                        ? { topic, courseCode: course.courseCode }
+                        : { topic },
+                    })
                   }
                 />
               ))}
