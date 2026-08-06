@@ -160,10 +160,11 @@ app bundle. Set `EXPO_PUBLIC_GATEWAY_URL` in that profile's `env` to the gateway
 the build should talk to; a build has no `.env` to read.
 
 > [!NOTE]
-> The APK talks to the gateway over plain HTTP, which Android blocks by default.
-> That is what the `expo-build-properties` plugin in `app.json` is for. iOS
-> blocks it too, and will need an App Transport Security exception or a gateway
-> behind TLS.
+> Both platforms block plain HTTP by default, and the gateway serves plain HTTP.
+> Android is handled by the `expo-build-properties` plugin in `app.json`; iOS by
+> the `NSAppTransportSecurity` exception beside it. Put the gateway behind TLS
+> and both can go — and both **must** go before any App Store submission, where
+> a blanket arbitrary-loads exception needs a justification Apple will accept.
 
 > [!WARNING]
 > Bump `version` in `app.json` before rebuilding. Android refuses to install an

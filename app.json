@@ -15,8 +15,12 @@
     "ios": {
       "icon": "./assets/images/icon.png",
       "supportsTablet": true,
+      "bundleIdentifier": "com.anonymous.cleveft",
       "infoPlist": {
-        "NSMicrophoneUsageDescription": "Cleveft records your lectures so it can transcribe them and answer your questions about them later."
+        "NSMicrophoneUsageDescription": "Cleveft records your lectures so it can transcribe them and answer your questions about them later.",
+        "NSAppTransportSecurity": {
+          "NSAllowsArbitraryLoads": true
+        }
       }
     },
     "android": {
@@ -27,6 +31,7 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
+      "versionCode": 2,
       "permissions": [
         "android.permission.RECORD_AUDIO",
         "android.permission.MODIFY_AUDIO_SETTINGS",
