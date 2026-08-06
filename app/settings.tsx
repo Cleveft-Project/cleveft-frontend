@@ -231,22 +231,28 @@ export default function SettingsScreen() {
           </SettingsGroup>
         </Animated.View>
 
-        <Animated.View entering={staggeredEntrance(3)}>
-          <SectionHeader title="Connection" />
-          <SettingsGroup>
-            <SettingsRow
-              first
-              icon="server"
-              tone="accent"
-              title="Gateway"
-              subtitle={BASE_URL}
-            />
-          </SettingsGroup>
-          <Text style={styles.hint}>
-            Set EXPO_PUBLIC_GATEWAY_URL in .env to point the app at a different machine. On a
-            physical device this must be your computer&apos;s LAN address, not localhost.
-          </Text>
-        </Animated.View>
+        {/* Development only. Which machine the app is talking to is a debugging
+            aid, not a setting: a student can do nothing with a raw IP address
+            except worry about it, and the instructions below it are addressed to
+            whoever is running Metro, not to whoever is using the app. */}
+        {__DEV__ ? (
+          <Animated.View entering={staggeredEntrance(3)}>
+            <SectionHeader title="Connection" />
+            <SettingsGroup>
+              <SettingsRow
+                first
+                icon="server"
+                tone="accent"
+                title="Gateway"
+                subtitle={BASE_URL}
+              />
+            </SettingsGroup>
+            <Text style={styles.hint}>
+              Set EXPO_PUBLIC_GATEWAY_URL in .env to point the app at a different machine. On a
+              physical device this must be your computer&apos;s LAN address, not localhost.
+            </Text>
+          </Animated.View>
+        ) : null}
 
         {/* Last, and deliberately so. Nobody opens Settings to read the version
             number, but everybody expects to find it at the bottom. */}
