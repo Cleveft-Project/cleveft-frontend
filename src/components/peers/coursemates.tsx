@@ -24,9 +24,12 @@ import { radius, spacing, typography, useTheme, useThemedStyles, type Palette } 
  * meet, the one two rows over whose name they never caught. Cleveft knows which
  * courses everyone is taking, so it can simply say who else is in the room.
  *
- * <p>Grouped by course rather than merged into one list. "Nine others in
- * CSM 266" is a fact a student can act on; "twenty-three people you might know"
- * is a wall.
+ * <p>One card per person, ordered by how much of the week you share. Grouping
+ * the results by course reads well until you notice that coursemates are
+ * coursemates precisely because they take the same eight courses you do — the
+ * same face came back eight times, and the tally counted them eight times over.
+ * "You share seven courses with this person" is the fact worth surfacing, and it
+ * only exists once the duplicates are collapsed.
  */
 
 /**
@@ -143,13 +146,41 @@ export function Coursemates({
     };
   }, [courses]);
 
-  const total = useMemo(
-    () =>
-      Object.values(byCourse)
-        .flat()
-        .filter((person) => !connectedIds.has(person.id)).length,
-    [byCourse, connectedIds],
-  );
+  /**
+   * One entry per person, carrying every course you share with them.
+   *
+   * <p>The server answers per course, which is the right shape for the query and
+   * the wrong shape for the screen: a person taking eight of your courses comes
+   * back in eight of the responses. Collapsing on the id turns eight rows into
+   * one person and eight course codes into a single, more useful sentence.
+   */
+  const roster = useMemo(() => {
+    const merged = new Map<string, { person: PeerSummary; shared: string[] }>();
+
+    Object.entries(byCourse).forEach(([code, people]) => {
+      people.forEach((person) => {
+        if (connectedIds.has(person.id)) {
+          return;
+        }
+        const seen = merged.get(person.id);
+        if (!seen) {
+          merged.set(person.id, { person, shared: [code] });
+        } else if (!seen.shared.includes(code)) {
+          seen.shared.push(code);
+        }
+      });
+    });
+
+    // Most overlap first. The person you share seven courses with sits beside
+    // you every day; the one you share a single elective with is a stranger.
+    return [...merged.values()].sort(
+      (a, b) =>
+        b.shared.length - a.shared.length
+        || a.person.fullName.localeCompare(b.person.fullName),
+    );
+  }, [byCourse, connectedIds]);
+
+  const total = roster.length;
 
   const invite = async () => {
     haptics.tap();
@@ -188,43 +219,26 @@ export function Coursemates({
         </Animated.View>
       ) : null}
 
-      {Object.entries(byCourse).map(([code, people]) => {
-        const available = people.filter((person) => !connectedIds.has(person.id));
-        if (available.length === 0) {
-          return null;
-        }
-
-        return (
-          <View key={code} style={styles.courseGroup}>
-            <View style={styles.courseHead}>
-              <View style={styles.courseChip}>
-                <Text style={styles.courseChipText}>{code}</Text>
-              </View>
-              <Text style={styles.courseCount}>
-                {available.length} {available.length === 1 ? 'person' : 'people'}
-              </Text>
-            </View>
-
-            {/* Horizontal, so a course with twelve people does not push every
-                other course off the screen. */}
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.cardRow}
-            >
-              {available.map((person, index) => (
-                <PersonCard
-                  key={person.id}
-                  person={person}
-                  index={index}
-                  busy={busyId === person.id}
-                  onConnect={() => onConnect(person.id)}
-                />
-              ))}
-            </ScrollView>
-          </View>
-        );
-      })}
+      {/* Horizontal, so a full class does not push the rest of the tab off the
+          bottom of the screen. */}
+      {roster.length > 0 ? (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.cardRow}
+        >
+          {roster.map(({ person, shared }, index) => (
+            <PersonCard
+              key={person.id}
+              person={person}
+              shared={shared}
+              index={index}
+              busy={busyId === person.id}
+              onConnect={() => onConnect(person.id)}
+            />
+          ))}
+        </ScrollView>
+      ) : null}
 
       {!loading && total === 0 ? (
         <View style={styles.prompt}>
@@ -244,14 +258,17 @@ export function Coursemates({
   );
 }
 
-/** One person, with the courses you share highlighted. */
+/** One person, labelled with how much of your timetable they share. */
 function PersonCard({
   person,
+  shared,
   index,
   busy,
   onConnect,
 }: {
   person: PeerSummary;
+  /** Course codes you both take — never empty, or the card would not exist. */
+  shared: string[];
   index: number;
   busy: boolean;
   onConnect: () => void;
@@ -279,11 +296,15 @@ function PersonCard({
       <Text style={styles.cardName} numberOfLines={1}>
         {person.fullName}
       </Text>
-      {person.programme ? (
-        <Text style={styles.cardMeta} numberOfLines={1}>
-          {person.programme}
+
+      {/* The course code when there is only one, the count when there are
+          several — "CSM266" and "7 shared courses" are both answers to "why am
+          I being shown this person", which the programme name never was. */}
+      <View style={styles.sharedChip}>
+        <Text style={styles.sharedChipText} numberOfLines={1}>
+          {shared.length === 1 ? shared[0] : `${shared.length} shared courses`}
         </Text>
-      ) : null}
+      </View>
 
       <Pressable
         onPress={() => {
@@ -325,29 +346,6 @@ const createStyles = (c: Palette) => StyleSheet.create({
     color: c.textSecondary,
     flex: 1,
   },
-  courseGroup: {
-    gap: spacing.sm,
-  },
-  courseHead: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-  },
-  courseChip: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: 3,
-    borderRadius: radius.pill,
-    backgroundColor: c.accentSoft,
-  },
-  courseChipText: {
-    ...typography.micro,
-    color: c.accent,
-    letterSpacing: 0.4,
-  },
-  courseCount: {
-    ...typography.micro,
-    color: c.textMuted,
-  },
   cardRow: {
     gap: spacing.md,
     paddingRight: spacing.xl,
@@ -369,9 +367,17 @@ const createStyles = (c: Palette) => StyleSheet.create({
     fontWeight: '600',
     textAlign: 'center',
   },
-  cardMeta: {
+  sharedChip: {
+    maxWidth: '100%',
+    paddingHorizontal: spacing.md,
+    paddingVertical: 3,
+    borderRadius: radius.pill,
+    backgroundColor: c.accentSoft,
+  },
+  sharedChipText: {
     ...typography.micro,
-    color: c.textMuted,
+    color: c.accent,
+    letterSpacing: 0.3,
     textAlign: 'center',
   },
   connect: {
