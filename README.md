@@ -31,8 +31,8 @@ flowchart TD
     I["index"] --> AU["(auth)"]
     I --> TB["(tabs)"]
     AU --> W["👋 welcome / onboarding"]
-    AU --> L["🔑 login / sign-up"]
-    L --> SE["🎓 setup"]
+    AU --> L["🔑 login"]
+    AU --> SU["✍️ sign-up"] --> SE["🎓 setup"]
     TB --> H["🏠 home"]
     TB --> R["🎤 record"]
     TB --> CH["💬 chat"]
@@ -51,7 +51,7 @@ flowchart TD
 | :--- | :--- |
 | `(auth)/welcome` · `onboarding` | First run — what Cleveft is, and why it wants a microphone |
 | `(auth)/login` · `sign-up` · `forgot-password` | Authentication and email verification |
-| `(auth)/setup` | Name, institution, programme and the courses you are taking |
+| `(auth)/setup` | Institution, programme and courses. **After sign-up only** — signing in goes straight to home, and everything it asks is skippable and editable later from the profile |
 
 ### Tabs
 
