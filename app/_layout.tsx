@@ -52,7 +52,7 @@ function useNativeBackground() {
  */
 function AuthGate({ children }: { children: React.ReactNode }) {
   const styles = useThemedStyles(createStyles);
-  const { isAuthenticated, isBootstrapping } = useAuth();
+  const { isAuthenticated, isBootstrapping, needsSetup } = useAuth();
   const segments = useSegments();
   const router = useRouter();
 
@@ -79,9 +79,14 @@ function AuthGate({ children }: { children: React.ReactNode }) {
       // on the same launch.
       router.replace('/onboarding');
     } else if (isAuthenticated && inAuthGroup && !onSetup) {
-      router.replace('/home');
+      // Registering flips isAuthenticated before sign-up gets to navigate, so
+      // this fires while the router still reports the sign-up screen — and the
+      // exemption above cannot help, because `segments` has not caught up.
+      // Sending them to the same place sign-up is sending them means the two
+      // agree instead of racing, and whichever lands first is correct.
+      router.replace(needsSetup ? '/setup' : '/home');
     }
-  }, [isAuthenticated, isBootstrapping, segments, router]);
+  }, [isAuthenticated, isBootstrapping, needsSetup, segments, router]);
 
   if (isBootstrapping) {
     return (

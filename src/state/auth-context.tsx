@@ -18,6 +18,17 @@ interface AuthState {
   /** True until the stored session has been read from the keychain. */
   isBootstrapping: boolean;
   isAuthenticated: boolean;
+  /**
+   * True between registering and reaching the app proper.
+   *
+   * <p>Sign-up navigates to setup itself, but registering also flips
+   * `isAuthenticated`, which wakes the route guard while the router still
+   * believes it is on the sign-up screen. The guard would see an authenticated
+   * student loose in the auth group and eject them to home, beating that
+   * navigation. Rather than have the two race, this tells the guard where a
+   * newly registered student is supposed to end up, so both agree.
+   */
+  needsSetup: boolean;
 }
 
 interface AuthContextValue extends AuthState {
@@ -39,6 +50,7 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isBootstrapping, setIsBootstrapping] = useState(true);
+  const [needsSetup, setNeedsSetup] = useState(false);
 
   // Guards against setting state after unmount during the async bootstrap.
   const mounted = useRef(true);
@@ -53,6 +65,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await tokenStore.clear();
     if (mounted.current) {
       setUser(null);
+      setNeedsSetup(false);
     }
   }, []);
 
@@ -104,6 +117,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       refreshToken: response.refreshToken,
       user: response.user,
     });
+    setNeedsSetup(false);
     setUser(response.user);
   }, []);
 
@@ -114,6 +128,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       refreshToken: response.refreshToken,
       user: response.user,
     });
+    // Set together with the user, so the guard never sees one without the
+    // other — React commits both in the same render.
+    setNeedsSetup(true);
     setUser(response.user);
   }, []);
 
@@ -153,13 +170,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       user,
       isBootstrapping,
       isAuthenticated: user !== null,
+      needsSetup,
       signIn,
       signUp,
       signOut,
       updateUser,
       refreshUser,
     }),
-    [user, isBootstrapping, signIn, signUp, signOut, updateUser, refreshUser],
+    [user, isBootstrapping, needsSetup, signIn, signUp, signOut, updateUser, refreshUser],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
