@@ -20,7 +20,6 @@
       }
     },
     "android": {
-      "usesCleartextTraffic": true,
       "adaptiveIcon": {
         "backgroundColor": "#080E10",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
@@ -60,11 +59,27 @@
           "color": "#00FF87",
           "defaultChannel": "default"
         }
-      ]
+      ],
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "usesCleartextTraffic": true
+          }
+        }
+      ],
+      "expo-asset"
     ],
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "b943aa92-c690-4a1b-9acd-55803f503572"
+      }
+    },
+    "owner": "dennis_brownn"
   }
 }
