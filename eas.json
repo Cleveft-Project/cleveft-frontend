@@ -17,7 +17,7 @@
         "buildType": "apk"
       },
       "env": {
-        "EXPO_PUBLIC_GATEWAY_URL": "http://REPLACE_WITH_SERVER_IP:8080"
+        "EXPO_PUBLIC_GATEWAY_URL": "http://35.187.48.149:8080"
       }
     },
     "production": {
