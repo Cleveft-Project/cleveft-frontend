@@ -30,30 +30,64 @@ and unauthenticated states cannot bleed into each other.
 flowchart TD
     I["index"] --> AU["(auth)"]
     I --> TB["(tabs)"]
-    AU --> W["👋 welcome"]
-    AU --> L["🔑 login"]
-    AU --> SU["✍️ sign-up"]
+    AU --> W["👋 welcome / onboarding"]
+    AU --> L["🔑 login / sign-up"]
+    L --> SE["🎓 setup"]
     TB --> H["🏠 home"]
     TB --> R["🎤 record"]
     TB --> CH["💬 chat"]
     TB --> EP["📝 examprep"]
-    TB --> CO["🤝 collab"]
-    H --> TR["📄 transcript"]
-    EP --> QZ["🧩 quiz"]
-    H --> ST["⚙️ settings"]
+    TB --> CO["🤝 circle"]
+    H --> LB["📚 library"] --> TR["📄 transcript"]
+    EP --> TP["🎯 topic"] --> QZ["🧩 quiz"]
+    H --> AC["🏅 achievements"]
+    H --> ST["⚙️ settings"] --> PR["👤 profile"]
+    ST --> NO["🔔 notifications"]
 ```
+
+### Before sign-in
 
 | Route | Purpose |
 | :--- | :--- |
-| `(auth)/welcome` · `login` · `sign-up` | Onboarding and authentication |
+| `(auth)/welcome` · `onboarding` | First run — what Cleveft is, and why it wants a microphone |
+| `(auth)/login` · `sign-up` · `forgot-password` | Authentication and email verification |
+| `(auth)/setup` | Name, institution, programme and the courses you are taking |
+
+### Tabs
+
+| Route | Purpose |
+| :--- | :--- |
 | `(tabs)/home` | Dashboard — recent lectures, streak, weak areas, readiness |
-| `(tabs)/record` | Audio recorder with live waveform, plus PDF import |
+| `(tabs)/record` | Live recorder with waveform, plus PDF and YouTube import |
 | `(tabs)/chat` | RAG chat over your own lectures, with transcript citations |
-| `(tabs)/examprep` | Quizzes and performance tracking |
-| `(tabs)/collab` | Peers, shared learning paths and threads |
-| `transcript` | Transcript reader and note view for one lecture |
-| `quiz` | Quiz player |
-| `settings` · `upgrade` | Profile, theme, sign out, plan tiers |
+| `(tabs)/examprep` | Quizzes, topic readiness and performance tracking |
+| `(tabs)/collab` | Your circle — board, feed, shared paths and coursemates |
+
+### Pushed on top
+
+| Route | Purpose |
+| :--- | :--- |
+| `library` | Every lecture you own, searchable and filterable by course |
+| `transcript` | Transcript reader, structured notes and key concepts |
+| `topic` · `quiz` | One topic's questions, and the quiz player |
+| `achievements` | Streaks, milestones and what is still unearned |
+| `profile` · `settings` | Identity and courses; theme, password, deletion |
+| `notifications` | Per-category push toggles, daily reminder and quiet hours |
+| `upgrade` | Plan tiers |
+
+---
+
+## 📥 Getting material in
+
+Three ways in, all of which land as a `Lecture` in `PENDING` and are polled to
+completion the same way — so the rest of the app never branches on where
+something came from.
+
+| Source | Endpoint | Notes |
+| :--- | :--- | :--- |
+| 🎤 Live recording | `POST /api/v1/transcriptions` | Multipart audio, with duration |
+| 📄 PDF import | `POST /api/v1/transcriptions/documents` | Multipart; no duration, a document has no length |
+| ▶️ YouTube link | `POST /api/v1/transcriptions/videos` | JSON — there is no file, only a URL |
 
 ---
 
@@ -61,12 +95,12 @@ flowchart TD
 
 ```
 app/            routes only — each file is a screen
-src/api/        typed gateway client, token storage, audio upload
-src/components/ shared UI primitives (cards, meters, headers, tab bar)
+src/api/        typed gateway client, token storage, audio and document upload
+src/components/ shared UI primitives (cards, meters, headers, sheets, tab bar)
 src/theme/      light and dark palettes, spacing and typography tokens
 src/hooks/      data-fetching and async helpers
-src/state/      auth context
-src/lib/        pure helpers (streak computation, formatting)
+src/state/      auth, notifications, chrome and feedback contexts
+src/lib/        pure helpers (streak, achievements, courses, notifications)
 ```
 
 Both colour schemes are defined in `src/theme/palettes.ts` with **identical
@@ -108,6 +142,32 @@ up the stack.
 > **SDK 56**. A newer Expo Go from the app store will refuse to open it with
 > *"Project is incompatible with this version of Expo Go"*. Install the matching
 > build from <https://expo.dev/go?sdkVersion=56>.
+
+---
+
+## 📦 Building an APK
+
+Expo Go is enough for day-to-day work, but push notifications need a real
+build — remote push was removed from Expo Go on Android in SDK 53, so the app
+detects Expo Go and disables them rather than crashing.
+
+```bash
+npx eas build --platform android --profile preview
+```
+
+The `preview` profile in `eas.json` produces an installable APK rather than an
+app bundle. Set `EXPO_PUBLIC_GATEWAY_URL` in that profile's `env` to the gateway
+the build should talk to; a build has no `.env` to read.
+
+> [!NOTE]
+> The APK talks to the gateway over plain HTTP, which Android blocks by default.
+> That is what the `expo-build-properties` plugin in `app.json` is for. iOS
+> blocks it too, and will need an App Transport Security exception or a gateway
+> behind TLS.
+
+> [!WARNING]
+> Bump `version` in `app.json` before rebuilding. Android refuses to install an
+> APK over one with the same version code, so testers have to uninstall first.
 
 ---
 
