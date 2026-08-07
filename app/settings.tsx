@@ -17,6 +17,7 @@ import { VoicePicker } from '@/components/voice-picker';
 import { useHaptics } from '@/components/animated/haptics';
 import { useAuth } from '@/state/auth-context';
 import { useFeedback } from '@/state/feedback-context';
+import { useRecording } from '@/state/recording-context';
 import { spacing, typography, useTheme, useThemedStyles, type Palette } from '@/theme';
 
 /**
@@ -42,6 +43,7 @@ const LICENCES_URL = 'https://cleveft.app/licences';
  * profile to correct their name.
  */
 export default function SettingsScreen() {
+  const { barDetail, setBarDetail } = useRecording();
   const styles = useThemedStyles(createStyles);
   const { isDark, colors } = useTheme();
   const router = useRouter();
@@ -106,6 +108,30 @@ export default function SettingsScreen() {
                   : 'Better in daylight and for long reading'
               }
               trailing={<ThemeToggle />}
+            />
+
+            {/* The floating recorder is the one piece of chrome that sits on
+                top of whatever you are doing, so how much of the screen it is
+                allowed to take is a fair thing to have an opinion about. */}
+            <SettingsRow
+              icon="radio"
+              tone="accent"
+              title="Recording bar"
+              subtitle={
+                barDetail === 'detailed'
+                  ? 'Shows the state and a live level while recording'
+                  : 'Just the time and the controls'
+              }
+              trailing={
+                <Switch
+                  value={barDetail === 'detailed'}
+                  onValueChange={(next) => {
+                    feel.tap();
+                    setBarDetail(next ? 'detailed' : 'compact');
+                  }}
+                  trackColor={{ false: colors.surfaceSunken, true: colors.accentVivid }}
+                />
+              }
             />
           </SettingsGroup>
         </Animated.View>

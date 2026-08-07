@@ -1,18 +1,10 @@
 import { Ionicons } from '@expo/vector-icons';
 import * as DocumentPicker from 'expo-document-picker';
-import {
-  RecordingPresets,
-  requestRecordingPermissionsAsync,
-  setAudioModeAsync,
-  useAudioRecorder,
-  useAudioRecorderState,
-} from 'expo-audio';
 import { useFocusEffect, useRouter, useScrollToTop } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
-  Platform,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -30,7 +22,6 @@ import {
 } from 'react-native-reanimated';
 
 import { ApiError, lecturesApi } from '@/api';
-import { preferredWebMimeType } from '@/api/audio-upload';
 import { Animated, staggeredEntrance } from '@/components/animated/entrance';
 import { EmptyState, ErrorState } from '@/components/feedback';
 import { Card } from '@/components/card';
@@ -42,72 +33,12 @@ import { ScrollEdges, useScrollEdges } from '@/components/scroll-edges';
 import { Screen } from '@/components/screen';
 import { TextField } from '@/components/text-field';
 import { VideoImportSheet } from '@/components/video-import-sheet';
-import { Waveform, normaliseMetering } from '@/components/waveform';
+import { Waveform } from '@/components/waveform';
 import { useAsync } from '@/hooks/use-async';
 import { coursesFromLectures, groupLecturesByCourse } from '@/lib/courses';
+import { useRecording } from '@/state/recording-context';
 import { radius, spacing, typography, useTheme, useThemedStyles, type Palette } from '@/theme';
 
-/**
- * Metering has to be requested explicitly, and the waveform depends on it.
- *
- * On web the top-level `mimeType` is what the recorder reads (its default is
- * plain `audio/webm`); on native it is ignored in favour of the preset's
- * per-platform extension and output format.
- */
-const RECORDING_OPTIONS = {
-  ...RecordingPresets.HIGH_QUALITY,
-
-  /*
-   * Tuned for speech, not music.
-   *
-   * HIGH_QUALITY is 128 kbps stereo at 44.1 kHz — a sample rate that reaches
-   * 22 kHz, when human speech has run out of energy by 8, and a second channel
-   * that a phone microphone fills with a near-copy of the first. Gemini
-   * downsamples to mono before it listens, so all of that is encoded, uploaded
-   * and then discarded.
-   *
-   * The bitrate is the one figure a real lecture hall argues about. A lossy
-   * codec spends its bits on whatever it judges most audible, and it cannot
-   * tell the lecturer from the fan, the corridor or the row behind — so in a
-   * noisy room those bits are shared out, and too low a ceiling starts costing
-   * intelligibility rather than just fidelity. 48 kbps mono leaves comfortable
-   * headroom for that; 32 would be fine for a quiet room and a gamble in a
-   * full one, and a lost lecture cannot be re-recorded.
-   *
-   * That still lands around 22 MB an hour rather than 58, well inside the
-   * gateway's upload window — which is what actually limits how long a lecture
-   * can be, far more than the 200 MB cap does.
-   */
-  sampleRate: 22050,
-  numberOfChannels: 1,
-  bitRate: 48000,
-  web: { ...RecordingPresets.HIGH_QUALITY.web, bitsPerSecond: 48000 },
-
-  android: {
-    ...RecordingPresets.HIGH_QUALITY.android,
-    /*
-     * The actual handle on a noisy room, and nothing to do with the codec.
-     *
-     * <p>Android routes recording through a named source, and the default one
-     * assumes it is capturing whatever is in front of it. `voice_recognition`
-     * tells the device this is speech destined for a recogniser, which on most
-     * handsets switches on the hardware noise suppressor and disables the
-     * aggressive automatic gain that otherwise pumps room noise up between
-     * sentences. It is the source Android's own speech recognition asks for.
-     *
-     * <p>`voice_communication` was the alternative and is tuned for a phone
-     * held to the ear — it adds echo cancellation and clamps harder, which
-     * flatters a close talker and can bury a lecturer three rows away.
-     */
-    audioSource: 'voice_recognition' as const,
-  },
-
-  isMeteringEnabled: true,
-  ...(Platform.OS === 'web' ? { mimeType: preferredWebMimeType() } : null),
-};
-
-/** Only used when the platform reports no type of its own. */
-const FALLBACK_MIME_TYPE = Platform.select({ web: 'audio/webm', default: 'audio/mp4' });
 
 /**
  * "EE355-Lecture4-BJT.pdf" -> "EE355 Lecture4 BJT".
@@ -184,48 +115,54 @@ export default function RecordScreen() {
   // Content dissolves into the top and bottom edges as it scrolls.
   const edges = useScrollEdges();
 
-  const recorder = useAudioRecorder(RECORDING_OPTIONS);
-  const recorderState = useAudioRecorderState(recorder);
+  /*
+   * The take itself lives above the router, not here.
+   *
+   * This screen is the full view onto it — fields, waveform, the big control —
+   * but it is no longer the owner, because a lecture has to keep running while
+   * the student is somewhere else in the app. See `recording-context`.
+   */
+  const {
+    isActive,
+    paused,
+    durationMillis,
+    level,
+    uploading,
+    uploadError,
+    permissionGranted,
+    title,
+    setTitle,
+    courseCode,
+    setCourseCode,
+    start,
+    pause,
+    resume,
+    stopAndUpload,
+    discard,
+    setError,
+    uploadCount,
+  } = useRecording();
 
-  const [permissionGranted, setPermissionGranted] = useState<boolean | null>(null);
-  const [title, setTitle] = useState('');
-  const [courseCode, setCourseCode] = useState('');
-  const [uploading, setUploading] = useState(false);
   const [importing, setImporting] = useState(false);
   const [addingVideo, setAddingVideo] = useState(false);
-  const [uploadError, setUploadError] = useState<string | null>(null);
-  /**
-   * Tracked here rather than read from the recorder: `isRecording` goes false
-   * on pause, which is indistinguishable from stopped. The screen needs to tell
-   * "held, tape still rolling" from "nothing running".
-   */
-  const [paused, setPaused] = useState(false);
 
   const lectures = useAsync(() => lecturesApi.list(), []);
 
+  // Re-fetch when a recording finishes, wherever it was stopped from — the
+  // bar above the tabs can finish a lecture while this screen is not even
+  // on top, and its list would otherwise still be missing it on return.
   useEffect(() => {
-    (async () => {
-      const { granted } = await requestRecordingPermissionsAsync();
-      setPermissionGranted(granted);
-
-      if (granted) {
-        // playsInSilentMode keeps iOS from muting the session when the ringer
-        // switch is off — otherwise a lecture silently records nothing.
-        await setAudioModeAsync({ playsInSilentMode: true, allowsRecording: true });
-      }
-    })();
-  }, []);
+    if (uploadCount > 0) {
+      void lectures.reload();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [uploadCount]);
 
   useFocusEffect(
     useCallback(() => {
       void lectures.reload();
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []),
-  );
-
-  const level = useMemo(
-    () => normaliseMetering(recorderState.metering),
-    [recorderState.metering],
   );
 
   /** The student's own courses, so recording one is a tap rather than typing. */
@@ -238,30 +175,6 @@ export default function RecordScreen() {
     () => groupLecturesByCourse(lectures.data ?? []),
     [lectures.data],
   );
-
-  const startRecording = async () => {
-    if (!permissionGranted) {
-      const { granted } = await requestRecordingPermissionsAsync();
-      setPermissionGranted(granted);
-      if (!granted) {
-        Alert.alert(
-          'Microphone needed',
-          'Cleveft needs microphone access to record your lecture. Enable it in Settings.',
-        );
-        return;
-      }
-      await setAudioModeAsync({ playsInSilentMode: true, allowsRecording: true });
-    }
-
-    setUploadError(null);
-    try {
-      await recorder.prepareToRecordAsync();
-      recorder.record();
-      setPaused(false);
-    } catch {
-      setUploadError('Could not start recording. Close any other app using the microphone.');
-    }
-  };
 
   /**
    * Picks a PDF and hands it to the same pipeline a recording goes through.
@@ -280,7 +193,7 @@ export default function RecordScreen() {
    * scoped cache is then permitted.
    */
   const importDocument = async () => {
-    setUploadError(null);
+    setError(null);
 
     let picked;
     try {
@@ -290,7 +203,7 @@ export default function RecordScreen() {
         multiple: false,
       });
     } catch {
-      setUploadError('Could not open your files. Try again.');
+      setError('Could not open your files. Try again.');
       return;
     }
 
@@ -330,31 +243,13 @@ export default function RecordScreen() {
       // and they need different fixes. Twice now a generic sentence has sent us
       // looking in the wrong place.
       console.warn('[import] failed:', error);
-      setUploadError(
+      setError(
         error instanceof ApiError
           ? error.message
           : `Could not import that file: ${(error as Error)?.message ?? String(error)}`,
       );
     } finally {
       setImporting(false);
-    }
-  };
-
-  const pauseRecording = () => {
-    try {
-      recorder.pause();
-      setPaused(true);
-    } catch {
-      setUploadError('Could not pause the recording.');
-    }
-  };
-
-  const resumeRecording = () => {
-    try {
-      recorder.record();
-      setPaused(false);
-    } catch {
-      setUploadError('Could not resume the recording.');
     }
   };
 
@@ -374,98 +269,17 @@ export default function RecordScreen() {
         {
           text: 'Discard',
           style: 'destructive',
-          onPress: async () => {
-            try {
-              await recorder.stop();
-            } catch {
-              // Already stopped, or never started cleanly. Either way there is
-              // nothing left to tidy up and nothing worth telling the student.
-            }
-            setPaused(false);
-            setUploadError(null);
-          },
+          onPress: () => void discard(),
         },
       ],
     );
   };
 
-  const stopAndUpload = async () => {
-    const durationSeconds = Math.round((recorderState.durationMillis ?? 0) / 1000);
-
-    try {
-      await recorder.stop();
-    } catch {
-      setUploadError('Could not stop the recording cleanly.');
-      return;
-    }
-
-    const uri = recorder.uri;
-    if (!uri) {
-      setUploadError('The recording produced no audio file.');
-      return;
-    }
-
-    // Guard the pointless upload: a two-second tap produces nothing worth
-    // sending to the transcription pipeline.
-    if (durationSeconds < 2) {
-      setUploadError('That recording was too short to transcribe.');
-      return;
-    }
-
-    setUploading(true);
-    setUploadError(null);
-
-    try {
-      const lecture = await lecturesApi.upload({
-        uri,
-        // Extension is appended from the real audio type. On web the uri is a
-        // blob: URL, so there is no meaningful filename to take from it.
-        baseName: 'lecture',
-        mimeType: FALLBACK_MIME_TYPE,
-        /*
-         * No date in the name.
-         *
-         * Every card already prints when the lecture was recorded, so stamping
-         * it into the title says the same thing twice and pushes the actual
-         * subject onto a second line. The course code is the useful half of what
-         * a date was standing in for — it says which lecture this is, not merely
-         * which day it happened.
-         */
-        title: title.trim() || (courseCode.trim() ? `${courseCode.trim()} lecture` : 'Untitled lecture'),
-        courseCode: courseCode.trim() || undefined,
-        durationSeconds,
-      });
-
-      setTitle('');
-      setCourseCode('');
-      setPaused(false);
-      void lectures.reload();
-
-      router.push(`/transcript?lectureId=${lecture.id}`);
-    } catch (error) {
-      // Hitting the free cap is not a failure the student can retry their way
-      // out of, so it gets a route to the fix rather than an error line they
-      // would just tap "record" against again.
-      if (error instanceof ApiError && error.isQuotaExceeded) {
-        Alert.alert('Recording limit reached', error.message, [
-          { text: 'Not now', style: 'cancel' },
-          { text: 'See Pro', onPress: () => router.push('/upgrade') },
-        ]);
-        setUploadError(error.message);
-      } else {
-        setUploadError(
-          error instanceof ApiError ? error.message : 'Upload failed. Please try again.',
-        );
-      }
-    } finally {
-      setUploading(false);
-    }
-  };
-
-  const isRecording = recorderState.isRecording;
-  const elapsedMillis = recorderState.durationMillis ?? 0;
   // Paused still counts as armed: there is tape rolling, it is just held.
-  const armed = isRecording || paused;
+  // `isActive` is the context's name for the same idea.
+  const armed = isActive;
+  const isRecording = isActive && !paused;
+  const elapsedMillis = durationMillis;
 
   const phase: RecorderPhase = uploading
     ? 'uploading'
@@ -541,10 +355,10 @@ export default function RecordScreen() {
           <RecordControl
             phase={phase}
             level={level}
-            onStart={startRecording}
-            onStop={stopAndUpload}
-            onPause={pauseRecording}
-            onResume={resumeRecording}
+            onStart={() => void start()}
+            onStop={() => void stopAndUpload()}
+            onPause={pause}
+            onResume={resume}
             onDiscard={discardRecording}
           />
 

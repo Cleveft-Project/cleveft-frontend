@@ -13,6 +13,8 @@ import { AuthProvider, useAuth } from '@/state/auth-context';
 import { ChromeProvider } from '@/state/chrome-context';
 import { FeedbackProvider } from '@/state/feedback-context';
 import { NotificationsProvider } from '@/state/notifications-context';
+import { RecordingBar } from '@/components/recording-bar';
+import { RecordingProvider } from '@/state/recording-context';
 import { ThemeProvider, useTheme, useThemedStyles, type Palette } from '@/theme';
 
 /**
@@ -145,6 +147,11 @@ function RootShell() {
         </Stack>
       </AuthGate>
 
+      {/* Outside the router, so it holds still while any screen scrolls beneath
+          it — and so it is there on the transcript and the chat too, not only
+          on the five tabs. */}
+      <RecordingBar />
+
       {splashDone ? null : (
         <SplashOverlay ready={!isBootstrapping} onFinish={handleSplashFinish} />
       )}
@@ -170,7 +177,12 @@ function ThemedRoot() {
                 notification has somewhere to navigate to. */}
             <NotificationsProvider>
               <ChromeProvider>
-                <RootShell />
+                {/* Above the router, because a lecture outlives the screen that
+                    started it — the tape has to keep rolling while the student
+                    reads a transcript or asks the chatbot something. */}
+                <RecordingProvider>
+                  <RootShell />
+                </RecordingProvider>
               </ChromeProvider>
             </NotificationsProvider>
           </FeedbackProvider>
