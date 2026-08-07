@@ -13,20 +13,30 @@ import { NeonButton } from '@/components/neon-button';
 import { Pill } from '@/components/feedback';
 import { quizDateLabel } from '@/components/quiz-title';
 import { useAsync } from '@/hooks/use-async';
+import { StepSlider } from '@/components/step-slider';
 import { radius, spacing, typography, useTheme, useThemedStyles, type Palette } from '@/theme';
 
 type Difficulty = 'EASY' | 'MEDIUM' | 'HARD';
 const DIFFICULTIES: Difficulty[] = ['EASY', 'MEDIUM', 'HARD'];
 
 /**
- * 8 is the floor, not the only option.
+ * The range the server accepts, and nothing narrower.
  *
- * Fewer than eight is too small a sample to say anything useful about a topic —
- * miss two and the score swings 25 points. Above that, longer quizzes are for
- * a full pass before an exam, and 20 is roughly where a single sitting stops
- * being one sitting.
+ * <p>Four fixed buttons were a guess about how people revise, and it was wrong
+ * in both directions: someone drilling one stubborn topic wants five questions,
+ * and someone facing a dense lecturer with a semester's worth of examinable
+ * material wants far more than twenty. Neither was reachable.
+ *
+ * <p>The ceiling is the model's output budget rather than an opinion — see the
+ * note on `@Max` in the exam-prep service. Past forty the limit stops being
+ * technical and becomes the material: a lecture rarely holds that many distinct
+ * things worth examining, and asking for more produces padding.
  */
-const QUESTION_COUNTS = [8, 12, 16, 20];
+const MIN_QUESTIONS = 3;
+const MAX_QUESTIONS = 40;
+
+/** Enough to say something about a topic without becoming a sitting. */
+const DEFAULT_QUESTIONS = 8;
 
 interface LectureExamPrepProps {
   lectureId: string;
@@ -52,12 +62,7 @@ export function LectureExamPrepTab({ lectureId, lectureTitle, ready }: LectureEx
   const quizzes = useAsync(() => examPrepApi.listQuizzes(lectureId), [lectureId]);
 
   const [difficulty, setDifficulty] = useState<Difficulty>('MEDIUM');
-  /**
-   * 8 stays the default because it is a sensible single sitting, but it was
-   * hard-coded before, which meant a student revising one stubborn topic and a
-   * student doing a full pass before an exam got the identical quiz.
-   */
-  const [questionCount, setQuestionCount] = useState<number>(8);
+  const [questionCount, setQuestionCount] = useState<number>(DEFAULT_QUESTIONS);
   const [focusWeak, setFocusWeak] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -151,23 +156,16 @@ export function LectureExamPrepTab({ lectureId, lectureTitle, ready }: LectureEx
           ))}
         </View>
 
-        <Text style={styles.fieldLabel}>Questions</Text>
-        <View style={styles.chipRow}>
-          {QUESTION_COUNTS.map((option) => (
-            <Pressable
-              key={option}
-              onPress={() => setQuestionCount(option)}
-              style={[styles.chip, questionCount === option && styles.chipActive]}
-              accessibilityRole="radio"
-              accessibilityState={{ selected: questionCount === option }}
-              accessibilityLabel={`${option} questions`}
-            >
-              <Text style={[styles.chipText, questionCount === option && styles.chipTextActive]}>
-                {option}
-              </Text>
-            </Pressable>
-          ))}
+        <View style={styles.countHead}>
+          <Text style={styles.fieldLabel}>Questions</Text>
+          <Text style={styles.countValue}>{questionCount}</Text>
         </View>
+        <StepSlider
+          min={MIN_QUESTIONS}
+          max={MAX_QUESTIONS}
+          value={questionCount}
+          onChange={setQuestionCount}
+        />
 
         <Pressable
           onPress={() => setFocusWeak((previous) => !previous)}
@@ -329,7 +327,18 @@ const createStyles = (c: Palette) =>
       color: c.textMuted,
       marginBottom: spacing.md,
     },
-    chipRow: {
+    countHead: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    justifyContent: 'space-between',
+  },
+  countValue: {
+    ...typography.heading,
+    color: c.accent,
+    // Tabular, so the number does not shift the row as it counts up.
+    fontVariant: ['tabular-nums'],
+  },
+  chipRow: {
       flexDirection: 'row',
       gap: spacing.sm,
     },

@@ -5,6 +5,7 @@ import { RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native
 
 import { ApiError, examPrepApi } from '@/api';
 import { Animated, staggeredEntrance } from '@/components/animated/entrance';
+import { CourseQuizSheet } from '@/components/course-quiz-sheet';
 import { CourseReadinessCard } from '@/components/course-readiness-card';
 import { EmptyState, ErrorState, LoadingState } from '@/components/feedback';
 import { SectionHeader } from '@/components/headers';
@@ -40,6 +41,15 @@ export default function ExamPrepScreen() {
   const readiness = useAsync(() => examPrepApi.readiness(), []);
   const [quizzingCourse, setQuizzingCourse] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  /**
+   * The course whose quiz is being set up, held separately from the one being
+   * generated: the sheet is open before any request exists, and stays open
+   * while one is in flight.
+   */
+  const [pending, setPending] = useState<{
+    courseCode: string | null;
+    lectureCount: number;
+  } | null>(null);
 
   useFocusEffect(
     useCallback(() => {
@@ -54,13 +64,23 @@ export default function ExamPrepScreen() {
    * The one action that legitimately belongs at course level: a course exam
    * covers several lectures, so no single lecture screen owns it.
    */
-  const quizCourse = async (courseCode: string) => {
+  const quizCourse = async (questionCount: number) => {
+    if (!pending) {
+      return;
+    }
+    const { courseCode } = pending;
+
     setQuizzingCourse(courseCode);
     setError(null);
     try {
-      const quiz = await examPrepApi.generateQuiz({ courseCode, questionCount: 8 });
+      const quiz = await examPrepApi.generateQuiz({
+        courseCode: courseCode ?? undefined,
+        questionCount,
+      });
+      setPending(null);
       router.push(`/quiz?quizId=${quiz.id}`);
     } catch (caught) {
+      setPending(null);
       setError(
         caught instanceof ApiError ? caught.message : 'Could not generate a quiz right now.',
       );
@@ -141,7 +161,12 @@ export default function ExamPrepScreen() {
                   key={course.courseCode ?? '__ungrouped__'}
                   course={course}
                   index={index}
-                  onQuizCourse={quizCourse}
+                  onQuizCourse={() =>
+                    setPending({
+                      courseCode: course.courseCode ?? null,
+                      lectureCount: course.lectureCount,
+                    })
+                  }
                   quizzing={quizzingCourse === course.courseCode}
                   onOpenLecture={(lectureId) =>
                     router.push(`/transcript?lectureId=${lectureId}`)
@@ -168,6 +193,16 @@ export default function ExamPrepScreen() {
 
       {/* After the scroll view, so the fades paint over the content. */}
       <ScrollEdges {...edges} />
+
+      <CourseQuizSheet
+        visible={pending !== null}
+        courseCode={pending?.courseCode ?? null}
+        lectureCount={pending?.lectureCount ?? 0}
+        busy={quizzingCourse !== null}
+        onGenerate={(count) => void quizCourse(count)}
+        onClose={() => setPending(null)}
+      />
+
     </Screen>
   );
 }
