@@ -56,6 +56,52 @@ import { radius, spacing, typography, useTheme, useThemedStyles, type Palette } 
  */
 const RECORDING_OPTIONS = {
   ...RecordingPresets.HIGH_QUALITY,
+
+  /*
+   * Tuned for speech, not music.
+   *
+   * HIGH_QUALITY is 128 kbps stereo at 44.1 kHz — a sample rate that reaches
+   * 22 kHz, when human speech has run out of energy by 8, and a second channel
+   * that a phone microphone fills with a near-copy of the first. Gemini
+   * downsamples to mono before it listens, so all of that is encoded, uploaded
+   * and then discarded.
+   *
+   * The bitrate is the one figure a real lecture hall argues about. A lossy
+   * codec spends its bits on whatever it judges most audible, and it cannot
+   * tell the lecturer from the fan, the corridor or the row behind — so in a
+   * noisy room those bits are shared out, and too low a ceiling starts costing
+   * intelligibility rather than just fidelity. 48 kbps mono leaves comfortable
+   * headroom for that; 32 would be fine for a quiet room and a gamble in a
+   * full one, and a lost lecture cannot be re-recorded.
+   *
+   * That still lands around 22 MB an hour rather than 58, well inside the
+   * gateway's upload window — which is what actually limits how long a lecture
+   * can be, far more than the 200 MB cap does.
+   */
+  sampleRate: 22050,
+  numberOfChannels: 1,
+  bitRate: 48000,
+  web: { ...RecordingPresets.HIGH_QUALITY.web, bitsPerSecond: 48000 },
+
+  android: {
+    ...RecordingPresets.HIGH_QUALITY.android,
+    /*
+     * The actual handle on a noisy room, and nothing to do with the codec.
+     *
+     * <p>Android routes recording through a named source, and the default one
+     * assumes it is capturing whatever is in front of it. `voice_recognition`
+     * tells the device this is speech destined for a recogniser, which on most
+     * handsets switches on the hardware noise suppressor and disables the
+     * aggressive automatic gain that otherwise pumps room noise up between
+     * sentences. It is the source Android's own speech recognition asks for.
+     *
+     * <p>`voice_communication` was the alternative and is tuned for a phone
+     * held to the ear — it adds echo cancellation and clamps harder, which
+     * flatters a close talker and can bury a lecturer three rows away.
+     */
+    audioSource: 'voice_recognition' as const,
+  },
+
   isMeteringEnabled: true,
   ...(Platform.OS === 'web' ? { mimeType: preferredWebMimeType() } : null),
 };
